@@ -109,7 +109,7 @@ export interface PlatformCapabilities {
   supportsLiveAudio: boolean;
   /**
    * Teto de memória que libera RAM antes de fechar o cliente: só com a feature
-   * `memory-trim` no binário (edição completa).
+   * `memory-trim` no binário (nas duas edições).
    */
   supportsMemoryTrim: boolean;
   reasons: string[];

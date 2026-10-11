@@ -34,7 +34,7 @@ export function SessionPage({ active, onLeave }: { active: boolean; onLeave: () 
 
   const isWindows = isWindowsPlatform(store.platformCapabilities);
   const reconnectDefault = store.settings?.General?.AutoReconnect === "true";
-  // Teto de memória: só com a feature `memory-trim` (edição completa).
+  // Teto de memória: só com a feature `memory-trim` (nas duas edições).
   const memoryTrim = isWindows && store.platformCapabilities?.supportsMemoryTrim === true;
   const memoryDefaultMb = memoryLimitChoice(
     undefined,

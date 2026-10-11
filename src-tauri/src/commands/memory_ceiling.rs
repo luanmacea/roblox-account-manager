@@ -13,7 +13,7 @@
 // Nunca toca cliente aberto pelo site (adotado), nem a janela que a pessoa está
 // usando agora. A leitura de memória é a do working set, a mesma do Watcher.
 //
-// O pedido ao Windows só existe com a feature `memory-trim` (edição completa,
+// O pedido ao Windows só existe com a feature `memory-trim` (nas duas edições,
 // como o plano das ideias decidiu); sem ela, o teto inteiro fica desligado e a
 // tela não mostra a opção.
 

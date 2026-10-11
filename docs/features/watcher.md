@@ -271,14 +271,13 @@ limite de memória — em vez de fechar, o app primeiro pede ao Windows para tir
 da RAM o que o cliente não está usando agora (as páginas vão para o arquivo de
 paginação e voltam quando o cliente precisar; nada é perdido).
 
-- **Só na edição completa** (feature `memory-trim` do Cargo, dentro do `full`),
-  como o plano das ideias decidiu em 10/10/2026 (pacote 1.7): é uma API nativa
-  nova no binário (`K32EmptyWorkingSet`, do kernel32, a mesma família do
-  `K32GetProcessMemoryInfo` que o Watcher já usa), chamada só de
-  `trim_working_set`. `supportsMemoryTrim` nas capacidades diz à tela; sem a
-  feature, nada do teto aparece e a passada não faz nada. **Passar para a
-  padrão** é pôr `memory-trim` na lista do `standard` do Cargo.toml depois de um
-  `bun run scan --release` limpo nos dois motores.
+- **Nas duas edições** (feature `memory-trim` do Cargo, dentro do `standard`):
+  é uma API nativa nova no binário (`K32EmptyWorkingSet`, do kernel32, a mesma
+  família do `K32GetProcessMemoryInfo` que o Watcher já usa), chamada só de
+  `trim_working_set`. Começou só na completa e passou para a padrão depois de o
+  exe padrão com ela sair limpo no Defender e no VirusTotal (11/10/2026).
+  `supportsMemoryTrim` nas capacidades diz à tela; sem a feature, nada do teto
+  aparece e a passada não faz nada.
 - **O limite:** padrão de todas as contas em `Optimization.MemoryLimit` (MB, `0`
   ou vazio = sem limite, **desligado por padrão**) e, por conta, o campo
   `MemoryLimit` (`0` = sem limite para esta conta; sem o campo, segue o padrão).

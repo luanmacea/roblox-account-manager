@@ -36,7 +36,7 @@ struct PlatformCapabilities {
     /// `live-audio` no binário (nas duas edições, via `standard`).
     supports_live_audio: bool,
     /// Teto de memória que libera RAM antes de fechar: só no Windows e só com
-    /// a feature `memory-trim` (edição completa).
+    /// a feature `memory-trim` (nas duas edições).
     supports_memory_trim: bool,
     reasons: Vec<String>,
     warnings: Vec<String>,

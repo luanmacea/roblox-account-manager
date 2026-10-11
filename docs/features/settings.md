@@ -166,7 +166,7 @@ Fora dos perfis, uma chave para todos os clientes (cartão **While you play** da
 | Chave | Default | Significado |
 |---|---|---|
 | `FollowFocus` | `false` | Otimização que segue o foco: o cliente em uso (que o app abriu) a toda velocidade, os outros com a política de fundo; 35 s de carência para cliente novo. |
-| `MemoryLimit` | `0` | Teto de memória de cada cliente que o app abriu, em MB (`0` = sem limite; aceito de 256 a 65536). Acima dele o app pede ao Windows para liberar a memória do cliente; fecha só com `Watcher.Enabled` + `Watcher.CloseRbxMemory`. A conta pode ter o seu (campo `MemoryLimit`, página Session). Também muda no resumo da página Session. Só com a feature `memory-trim` (edição completa). Ver [watcher.md](watcher.md#teto-de-memória). |
+| `MemoryLimit` | `0` | Teto de memória de cada cliente que o app abriu, em MB (`0` = sem limite; aceito de 256 a 65536). Acima dele o app pede ao Windows para liberar a memória do cliente; fecha só com `Watcher.Enabled` + `Watcher.CloseRbxMemory`. A conta pode ter o seu (campo `MemoryLimit`, página Session). Também muda no resumo da página Session. Feature `memory-trim`, nas duas edições. Ver [watcher.md](watcher.md#teto-de-memória). |
 | `MuteBackgroundClients` | `false` | Fundo mudo: só o cliente em uso faz som (mixer do Windows). Só vale no binário com a feature `live-audio` (nas duas edições, via `standard`); sem ela a opção nem aparece. |
 
 Com `General.BottingUseSharedClientProfile=true`, Main e Alt usam o perfil Normal (`effective_launch_profile` em [launch_shared.rs](../../src-tauri/src/commands/launch_shared.rs)).

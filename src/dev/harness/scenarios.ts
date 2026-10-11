@@ -96,7 +96,7 @@ const baseHandler: InvokeHandler = (cmd, args) => {
         supportsMultiRoblox: true,
         // Mostra no dev:ui as opções que só existem com a feature `live-audio`.
         supportsLiveAudio: true,
-        // E o teto de memória (feature `memory-trim`, edição completa).
+        // E o teto de memória (feature `memory-trim`, nas duas edições).
         supportsMemoryTrim: true,
       };
     case "remembered_unlock_state":

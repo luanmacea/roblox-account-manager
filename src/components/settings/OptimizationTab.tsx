@@ -569,7 +569,7 @@ function WindowInUseSection({ s }: { s: UseSettingsReturn }) {
   const capabilities = useStore().platformCapabilities;
   const liveAudio = capabilities?.supportsLiveAudio === true;
   // Teto de memória (commands/memory_ceiling.rs): só com a feature
-  // `memory-trim` (edição completa). Cada conta muda o seu na página Session.
+  // `memory-trim` (nas duas edições). Cada conta muda o seu na página Session.
   const memoryTrim = capabilities?.supportsMemoryTrim === true;
   return (
     <div className="rounded-xl border border-zinc-800/70 bg-zinc-950/35 px-4 py-4">

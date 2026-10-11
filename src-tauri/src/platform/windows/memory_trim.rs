@@ -3,7 +3,7 @@
 // Elas vão para o arquivo de paginação e voltam quando o cliente precisar —
 // nada é fechado nem perdido.
 //
-// Só existe com a feature `memory-trim` (edição completa): é uma API nativa
+// Só existe com a feature `memory-trim` (nas duas edições, via `standard`): é uma API nativa
 // nova no binário (`K32EmptyWorkingSet`, do kernel32 — a mesma família do
 // `K32GetProcessMemoryInfo` que o Watcher já usa). Sem a feature, a função
 // devolve `false` e o teto fica desligado.
