@@ -7,6 +7,7 @@ import { Toggle } from "../ui/Toggle";
 import { isWindowsPlatform } from "../../utils/platform";
 import { MemoryDefaultSelect } from "../session/MemoryLimitControl";
 import { MEMORY_LIMIT_SETTING, memoryLimitChoice } from "../../utils/memoryLimit";
+import { RecordingsSummaryCard } from "../afk-mode/recordings/RecordingsSummaryCard";
 
 /**
  * Página Session: o Painel de Sessão (o mesmo da aba Console da Choose Game)
@@ -133,6 +134,10 @@ export function SessionPage({ active, onLeave }: { active: boolean; onLeave: () 
               {t("Open AFK Mode")}
             </button>
           </section>
+
+          {/* Gravações: quando tocam (Modo AFK, depois da reconexão), à vista
+              sem ir até a aba Recordings. Gravação é só Windows. */}
+          {isWindows && <RecordingsSummaryCard />}
 
           {/* O mesmo `Optimization.MemoryLimit` de Settings › Optimization.
               Cada conta muda o seu na lista "Em jogo" (SessionPanel). */}

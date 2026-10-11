@@ -10,7 +10,7 @@ vi.mock("@tauri-apps/api/event", async () => (await import("../../test-utils/tau
 import { ClicksTab, formatAfkElapsed } from "./ClicksTab";
 import type { AfkStatus, StoreValue } from "../../store";
 import { defaultSettings, makeAccount, setStore, storeRef } from "../../test-utils/renderWithStore";
-import { invokeMock, resetTauriMocks } from "../../test-utils/tauriMocks";
+import { resetTauriMocks } from "../../test-utils/tauriMocks";
 import i18n from "../../i18n";
 import { writeAfkPoint } from "../../afkClickPoint";
 
@@ -288,16 +288,8 @@ describe("ClicksTab — intervalo em minutos e segundos", () => {
     await typeInto("Send every: minutes", "0");
     await typeInto("Send every: seconds", "10");
 
-    expect(invokeMock).toHaveBeenCalledWith("update_setting", {
-      section: "Afk",
-      key: "IntervalMinutes",
-      value: "0",
-    });
-    expect(invokeMock).toHaveBeenCalledWith("update_setting", {
-      section: "Afk",
-      key: "IntervalSeconds",
-      value: "10",
-    });
+    expect(store.updateSetting).toHaveBeenCalledWith("Afk", "IntervalMinutes", "0");
+    expect(store.updateSetting).toHaveBeenCalledWith("Afk", "IntervalSeconds", "10");
 
     await start();
     expect(store.startAfkMode).toHaveBeenCalledWith(expect.objectContaining({ intervalSeconds: 10 }));
@@ -478,16 +470,12 @@ describe("ClicksTab — dá para saber que está funcionando", () => {
 
   /** O som explica o piscar de foco; ligado por quem quer, nunca por padrão. */
   it("o aviso sonoro nasce desligado e grava a escolha no INI", async () => {
-    renderDialog();
+    const { store } = renderDialog();
     const toggle = screen.getByRole("button", { name: "Beep when a cycle finishes" });
     expect(toggle).toHaveAttribute("aria-pressed", "false");
 
     await userEvent.click(toggle);
-    expect(invokeMock).toHaveBeenCalledWith("update_setting", {
-      section: "Afk",
-      key: "BeepOnCycle",
-      value: "true",
-    });
+    expect(store.updateSetting).toHaveBeenCalledWith("Afk", "BeepOnCycle", "true");
   });
 });
 
@@ -498,18 +486,14 @@ describe("ClicksTab — dá para saber que está funcionando", () => {
  */
 describe("ClicksTab — espera a tela cheia sair", () => {
   it("nasce ligado, explica numa frase e grava a escolha no INI", async () => {
-    renderDialog();
+    const { store } = renderDialog();
     const toggle = screen.getByRole("button", { name: "Wait while a fullscreen window is in front" });
     expect(toggle).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByText(/a video or another game in fullscreen/i)).toBeInTheDocument();
 
     await userEvent.click(toggle);
     expect(toggle).toHaveAttribute("aria-pressed", "false");
-    expect(invokeMock).toHaveBeenCalledWith("update_setting", {
-      section: "Afk",
-      key: "WaitForFullscreen",
-      value: "false",
-    });
+    expect(store.updateSetting).toHaveBeenCalledWith("Afk", "WaitForFullscreen", "false");
   });
 
   it("lê a escolha desligada do INI", () => {
@@ -822,15 +806,11 @@ describe("ClicksTab — modo clique", () => {
   }
 
   it("trocar para clique grava o modo no INI e esconde a tecla", async () => {
-    renderDialog();
+    const { store } = renderDialog();
     await userEvent.click(screen.getByLabelText("What to send"));
     await userEvent.click(screen.getByRole("button", { name: "Mouse click" }));
 
-    expect(invokeMock).toHaveBeenCalledWith("update_setting", {
-      section: "Afk",
-      key: "Mode",
-      value: "click",
-    });
+    expect(store.updateSetting).toHaveBeenCalledWith("Afk", "Mode", "click");
     expect(screen.queryByLabelText("Key to send")).not.toBeInTheDocument();
     expect(screen.getByText("50% × 50%")).toBeInTheDocument();
   });
@@ -877,8 +857,8 @@ describe("ClicksTab — modo clique", () => {
 
       expect(store.captureAfkPoint).toHaveBeenCalledTimes(1);
       expect(screen.getByText("52.5% × 71%")).toBeInTheDocument();
-      expect(invokeMock).toHaveBeenCalledWith("update_setting", { section: "Afk", key: "ClickX", value: "52.5" });
-      expect(invokeMock).toHaveBeenCalledWith("update_setting", { section: "Afk", key: "ClickY", value: "71" });
+      expect(store.updateSetting).toHaveBeenCalledWith("Afk", "ClickX", "52.5");
+      expect(store.updateSetting).toHaveBeenCalledWith("Afk", "ClickY", "71");
       expect(store.addToast).toHaveBeenCalledWith("Point marked on bravo's window");
     } finally {
       vi.useRealTimers();
@@ -902,7 +882,7 @@ describe("ClicksTab — modo clique", () => {
         "error"
       );
       expect(screen.getByText("50% × 50%")).toBeInTheDocument();
-      expect(invokeMock).not.toHaveBeenCalledWith("update_setting", expect.objectContaining({ key: "ClickX" }));
+      expect(store.updateSetting).not.toHaveBeenCalledWith("Afk", "ClickX", expect.anything());
     } finally {
       vi.useRealTimers();
     }
@@ -1089,5 +1069,29 @@ describe("ClicksTab — nomes ocultos", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+/**
+ * A aba Recordings também liga "repetir no Modo AFK" e muda o intervalo. As
+ * abas ficam montadas juntas: esta segue o INI quando ele muda por fora.
+ */
+describe("ClicksTab — segue o INI mudado pela aba Recordings", () => {
+  it("o modo e o intervalo trocados por fora aparecem aqui", () => {
+    const settings = defaultSettings();
+    settings.Afk = { IntervalMinutes: "10", IntervalSeconds: "0", Key: "Space", Mode: "key" };
+    setStore({ accounts: ACCOUNTS, launchedByProgram: new Set([11, 22]), afkKeys: KEYS, afkStatus: makeAfkStatus(), settings });
+    const view = render(<ClicksTab />);
+    expect(screen.getByRole("button", { name: "What to send" })).toHaveTextContent("Key press");
+
+    // A mesma instância (sem remontar): só o store mudou.
+    storeRef.current = {
+      ...storeRef.current,
+      settings: { ...settings, Afk: { ...settings.Afk, Mode: "recording", IntervalMinutes: "2", IntervalSeconds: "30" } },
+    };
+    view.rerender(<ClicksTab />);
+    expect(screen.getByRole("button", { name: "What to send" })).toHaveTextContent("Play the recording");
+    expect(screen.getByLabelText("Send every: minutes")).toHaveValue("2");
+    expect(screen.getByLabelText("Send every: seconds")).toHaveValue("30");
   });
 });

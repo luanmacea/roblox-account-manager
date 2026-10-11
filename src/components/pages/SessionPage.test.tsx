@@ -253,6 +253,50 @@ describe("SessionPage — summary", () => {
     expect(store.updateSetting).toHaveBeenCalledWith("Optimization", "CloseOverMemoryLimit", "true");
   });
 
+  /**
+   * Pedido do dono: o Modo AFK repetindo a gravação e a gravação depois da
+   * reconexão ficam à vista na página Session, com o atalho para a aba.
+   */
+  it("shows when the recordings play and opens the Recordings tab", async () => {
+    setInvokeMap({
+      get_recordings: {
+        recordings: [{ id: "a", name: "Farm loop", steps: [], createdAt: 0, updatedAt: 0 }],
+        defaultId: "a",
+        accountIds: { "20": "a" },
+        keys: [],
+      },
+      get_recording_playback: { active: false },
+    });
+    const { store } = renderWithStore(<SessionPage active onLeave={vi.fn()} />, {
+      accounts: ACCOUNTS,
+      launchQueue: null,
+      launchedByProgram: new Set<number>(),
+      platformCapabilities: makePlatformCapabilities({ os: "windows" }),
+      settings: {
+        Afk: { Mode: "recording", IntervalMinutes: "2", IntervalSeconds: "30" },
+        Recordings: { AfterReconnect: "true", AfterReconnectDelaySeconds: "45" },
+      },
+      ...storeActions(),
+    });
+    const card = await screen.findByTestId("session-recordings");
+    expect(await within(card).findByText(/All accounts: Farm loop\./)).toBeInTheDocument();
+    expect(card).toHaveTextContent("AFK mode: plays it every 2 min 30 s.");
+    expect(card).toHaveTextContent("After an automatic reconnect: plays once, 45 s after the account is back in the game.");
+    await userEvent.click(within(card).getByRole("button", { name: "Open Recordings" }));
+    expect(store.openAfkMode).toHaveBeenCalledWith({ tab: "recordings" });
+  });
+
+  it("has no recordings card outside Windows", () => {
+    renderWithStore(<SessionPage active onLeave={vi.fn()} />, {
+      accounts: ACCOUNTS,
+      launchQueue: null,
+      launchedByProgram: new Set<number>(),
+      platformCapabilities: makePlatformCapabilities({ os: "macos" }),
+      ...storeActions(),
+    });
+    expect(screen.queryByTestId("session-recordings")).not.toBeInTheDocument();
+  });
+
   it("shows the close-over-limit switch on when it was turned on", () => {
     renderWithStore(<SessionPage active onLeave={vi.fn()} />, {
       accounts: ACCOUNTS,

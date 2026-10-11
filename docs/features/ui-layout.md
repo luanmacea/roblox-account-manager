@@ -54,7 +54,7 @@ Até 03/10/2026 a Toolbar tinha uma fileira de ícones (Session, Theme, Nexus, A
 | Item | Página | Observação |
 |---|---|---|
 | **Accounts** | lista de contas (home) | contador de contas |
-| **Session** | `SessionPage`: Painel de Sessão + resumo ao lado (clientes abertos, entrando, em jogo; quem mantém as contas no jogo, com o padrão "Reconnect accounts that drop") | contador de clientes rodando (`launchedByProgram`) |
+| **Session** | `SessionPage`: Painel de Sessão + resumo ao lado (clientes abertos, entrando, em jogo; quem mantém as contas no jogo, com o padrão "Reconnect accounts that drop"; no Windows, o cartão **Recordings** — a gravação de todas as contas e quando ela toca, no Modo AFK e depois da reconexão, com **Open Recordings** ([recordings.md](recordings.md#a-tela)); o teto de memória com "Close a client that stays over its limit") | contador de clientes rodando (`launchedByProgram`) |
 | **AFK Mode** | `AfkPage` → `AfkModeView variant="page"` (Auto Rejoin + AFK) | ponto verde "On" com AFK ou Auto Rejoin ligado |
 | **Avatars** | `AvatarsPage` (abas Montar/Distribuir sob o cabeçalho) | |
 | **Groups** (pt/es "Grupos") | `GroupsPage` (+ `pages/groups/`): busca de grupos e entrada das contas marcadas, uma por vez (ver [groups.md](groups.md)) | selo "Entrando n/m" no cabeçalho durante o lote |

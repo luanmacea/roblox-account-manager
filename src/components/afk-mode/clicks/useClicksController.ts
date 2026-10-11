@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
 import { useStore } from "../../../store";
 import {
   clampAfkPercent,
@@ -134,6 +133,25 @@ export function useClicksController({ targetUserIds }: ClicksTabOptions = {}) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // A aba Recordings também liga o modo gravação e muda o intervalo (pelo
+  // `store.updateSetting`, como esta aba): as abas ficam montadas juntas,
+  // então esta segue o INI quando ele muda por fora. Só o que mudou de fato.
+  const iniAfk = store.settings?.Afk;
+  const iniMode = iniAfk?.Mode;
+  const iniMinutes = iniAfk?.IntervalMinutes;
+  const iniSeconds = iniAfk?.IntervalSeconds;
+  const seenIni = useRef({ mode: iniMode, minutes: iniMinutes, seconds: iniSeconds });
+  useEffect(() => {
+    const seen = seenIni.current;
+    if (iniMode !== seen.mode && iniMode !== undefined) setMode(parseAfkMode(iniMode));
+    if ((iniMinutes !== seen.minutes || iniSeconds !== seen.seconds) && (iniMinutes ?? iniSeconds) !== undefined) {
+      const interval = readAfkInterval({ IntervalMinutes: iniMinutes ?? "", IntervalSeconds: iniSeconds ?? "" });
+      setIntervalMinutes(interval.minutes);
+      setIntervalSecondsPart(interval.seconds);
+    }
+    seenIni.current = { mode: iniMode, minutes: iniMinutes, seconds: iniSeconds };
+  }, [iniMode, iniMinutes, iniSeconds]);
+
   // Com sessão em andamento, o que vale é o que a sessão está usando — não o
   // rascunho local, que o efeito de abertura relê do INI a qualquer momento.
   const effectiveKey = running ? status?.key ?? "" : key;
@@ -250,7 +268,9 @@ export function useClicksController({ targetUserIds }: ClicksTabOptions = {}) {
   }
 
   function persist(settingKey: string, value: string) {
-    void invoke("update_setting", { section: "Afk", key: settingKey, value }).catch(() => {});
+    // Pelo store: grava e já atualiza o `settings` dele, que a aba Recordings e
+    // a página Session leem (o resumo dos gatilhos das gravações).
+    void store.updateSetting("Afk", settingKey, value).catch(() => {});
   }
 
   /**

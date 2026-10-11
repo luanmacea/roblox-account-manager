@@ -107,6 +107,25 @@ describe("AfkModeView — as duas abas", () => {
     expect(screen.getByTestId("afk-mode-tab-state-clicks")).toHaveTextContent("Running");
   });
 
+  /** O cartão da aba Recordings diz quando a gravação toca, sem abrir a aba. */
+  it("o cartão das gravações diz o intervalo do Modo AFK e a reconexão", () => {
+    const settings = defaultSettings();
+    settings.Afk = { Mode: "recording", IntervalMinutes: "2", IntervalSeconds: "30" };
+    (settings as Record<string, Record<string, string>>).Recordings = { AfterReconnect: "true" };
+    base({ settings });
+    render(<AfkModeView variant="page" />);
+    expect(screen.getByRole("tab", { name: /Recordings/ })).toHaveTextContent(
+      "Every 2 min 30 s in AFK mode, and after a reconnect"
+    );
+
+    cleanup();
+    base();
+    render(<AfkModeView variant="page" />);
+    expect(screen.getByRole("tab", { name: /Recordings/ })).toHaveTextContent(
+      "Sequences of keys, clicks and waits played on each window"
+    );
+  });
+
   it("a página não tem botão de fechar; o modal tem", async () => {
     base();
     render(<AfkModeView variant="page" />);

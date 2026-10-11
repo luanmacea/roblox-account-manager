@@ -8,6 +8,9 @@ import { useConfirm, usePrompt } from "../../hooks/usePrompt";
 import { Select } from "../ui/Select";
 import { NumericInput } from "../ui/NumericInput";
 import { ToggleRow } from "../ui/ToggleRow";
+import { Toggle } from "../ui/Toggle";
+import { recordingTriggers } from "./recordings/triggers";
+import { RecordingTriggerLines } from "./recordings/RecordingTriggerLines";
 import { DANGER_ACTION, ModeStatusBar, NEUTRAL_ACTION, PRIMARY_ACTION } from "./ModeStatusBar";
 import { useRecordings } from "./recordings/useRecordings";
 import { TinyTaskImportPanel, tinyTaskSummaryLines, type ImportedDraft } from "./recordings/TinyTaskImport";
@@ -110,6 +113,8 @@ export function RecordingsTab() {
   }, [recordings, draft]);
 
   const dirty = !!draft && !sameDraft(draft, saved);
+  /** Contas que têm a gravação aberta como própria. */
+  const ownUses = saved ? Object.values(payload?.accountIds ?? {}).filter((id) => id === saved.id).length : 0;
   const problem: RecordingProblem | null = draft ? recordingProblem(draft.name, draft.steps, keys) : null;
   const firstKey = keys[0] ?? "Space";
 
@@ -123,6 +128,18 @@ export function RecordingsTab() {
     const own = new Set(Object.keys(payload?.accountIds ?? {}).map(Number));
     return store.accounts.filter((a) => store.launchedByProgram.has(a.UserID) || own.has(a.UserID));
   }, [store.accounts, store.launchedByProgram, payload]);
+
+  // Os gatilhos (Modo AFK e depois da reconexão), lidos do INI do store: a aba
+  // AFK clicks grava pelo store também, então os dois lados se veem.
+  const triggers = recordingTriggers(payload, store.settings);
+  const afkRunning = store.afkStatus?.active === true;
+  const iniAfk = store.settings?.Afk;
+  const [afkMinutes, setAfkMinutes] = useState(() => Math.floor(triggers.intervalSeconds / 60));
+  const [afkSeconds, setAfkSeconds] = useState(() => triggers.intervalSeconds % 60);
+  useEffect(() => {
+    setAfkMinutes(Math.floor(triggers.intervalSeconds / 60));
+    setAfkSeconds(triggers.intervalSeconds % 60);
+  }, [triggers.intervalSeconds, iniAfk?.IntervalMinutes, iniAfk?.IntervalSeconds]);
 
   const settingsRec = store.settings?.Recordings ?? {};
   const afterReconnect = settingsRec.AfterReconnect === "true";
@@ -381,6 +398,10 @@ export function RecordingsTab() {
     void store.updateSetting("Recordings", key, value).catch(() => {});
   }
 
+  function persistAfk(key: string, value: string) {
+    void store.updateSetting("Afk", key, value).catch(() => {});
+  }
+
   const duration = draft ? recordingDurationMs(draft.steps) : 0;
   const busy = playing || starting || testing;
 
@@ -578,6 +599,48 @@ export function RecordingsTab() {
 
             <section className={`${CARD} space-y-2`} aria-label={t("When it plays")}>
               <div className="text-[13px] font-semibold text-[var(--panel-fg)]">{t("When it plays")}</div>
+              <Toggle
+                checked={triggers.afkRepeats}
+                disabled={afkRunning}
+                onChange={(v) => persistAfk("Mode", v ? "recording" : "key")}
+                label="Repeat in AFK mode"
+                description={
+                  afkRunning
+                    ? "AFK mode is on: stop it in AFK clicks to change what it sends."
+                    : "While AFK mode is on, each account plays its recording again at this interval, counted from the end of the last one. Pick the accounts and start it in AFK clicks."
+                }
+              />
+              {triggers.afkRepeats ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-[12px] theme-muted flex-1">{t("Every")}</span>
+                  <NumericInput
+                    value={afkMinutes}
+                    min={0}
+                    max={120}
+                    integer
+                    disabled={afkRunning}
+                    ariaLabel={t("Repeat every: minutes")}
+                    onChange={setAfkMinutes}
+                    onCommit={(v) => persistAfk("IntervalMinutes", String(v))}
+                    containerClassName="relative w-16"
+                    className="sidebar-input text-xs w-full"
+                  />
+                  <span className="text-[12px] theme-muted">{t("min")}</span>
+                  <NumericInput
+                    value={afkSeconds}
+                    min={0}
+                    max={59}
+                    integer
+                    disabled={afkRunning}
+                    ariaLabel={t("Repeat every: seconds")}
+                    onChange={setAfkSeconds}
+                    onCommit={(v) => persistAfk("IntervalSeconds", String(v))}
+                    containerClassName="relative w-16"
+                    className="sidebar-input text-xs w-full"
+                  />
+                  <span className="text-[12px] theme-muted">s</span>
+                </div>
+              ) : null}
               <ToggleRow
                 label="Play after an automatic reconnect"
                 checked={afterReconnect}
@@ -599,9 +662,7 @@ export function RecordingsTab() {
                 <span className="text-[12px] theme-muted">s</span>
               </div>
               <div className="text-[11px] theme-muted leading-4">
-                {t(
-                  "Only the account that the automatic reconnect brought back plays, and only once. In AFK mode, choose \"Play the recording\" in AFK clicks to play it every interval."
-                )}
+                {t("After a reconnect, only the account that came back plays, and only once.")}
               </div>
             </section>
           </div>
@@ -633,6 +694,25 @@ export function RecordingsTab() {
                     <div className="theme-muted">
                       {t("Review the steps, test them on one account below, then save.")}
                     </div>
+                  </div>
+                ) : null}
+                {saved && !dirty ? (
+                  <div className="rounded-lg border theme-border px-3 py-2 space-y-1" data-testid="recording-use">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="text-[11.5px] text-[var(--panel-fg)]">
+                        {payload?.defaultId === saved.id
+                          ? t("Plays for every account that has no recording of its own.")
+                          : ownUses > 0
+                            ? t("Plays for {{count}} account(s) as their own recording.", { count: ownUses })
+                            : t("No account plays this recording yet.")}
+                      </span>
+                      {payload?.defaultId !== saved.id ? (
+                        <button onClick={() => void setDefault(saved.id)} className="sidebar-btn-sm">
+                          {t("Use for all accounts")}
+                        </button>
+                      ) : null}
+                    </div>
+                    <RecordingTriggerLines triggers={triggers} />
                   </div>
                 ) : null}
                 <div className="text-[11px] theme-muted">

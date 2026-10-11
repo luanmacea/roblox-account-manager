@@ -202,6 +202,7 @@ export const SUITES: Record<string, TestSuite> = {
     front: [
       "src/components/afk-mode/RecordingsTab.test.tsx",
       "src/recordings.test.ts",
+      "src/components/afk-mode/recordings/triggers.test.ts",
       "src/components/afk-mode/AfkModeView.test.tsx",
     ],
   },

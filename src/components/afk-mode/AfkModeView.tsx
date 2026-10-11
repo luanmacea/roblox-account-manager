@@ -5,6 +5,7 @@ import { useTr } from "../../i18n/text";
 import { RejoinTab } from "./RejoinTab";
 import { ClicksTab } from "./ClicksTab";
 import { RecordingsTab } from "./RecordingsTab";
+import { formatAfkIntervalSeconds, recordingTriggers } from "./recordings/triggers";
 
 export interface AfkModeViewProps {
   /** `modal`: dentro do `AfkModeDialog`. `page`: página inteira da navegação. */
@@ -46,6 +47,18 @@ export function AfkModeView({
   const [tab, setTab] = useState<AfkModeTab>(initialTab);
   const tabRefs = useRef<Record<AfkModeTab, HTMLButtonElement | null>>({ rejoin: null, clicks: null, recordings: null });
   const page = variant === "page";
+  // O cartão da aba Recordings diz quando a gravação toca, sem abrir a aba.
+  const triggers = recordingTriggers(null, store.settings);
+  const recordingsHint =
+    triggers.afkRepeats && triggers.afterReconnect
+      ? t("Every {{interval}} in AFK mode, and after a reconnect", {
+          interval: formatAfkIntervalSeconds(triggers.intervalSeconds),
+        })
+      : triggers.afkRepeats
+        ? t("Every {{interval}} in AFK mode", { interval: formatAfkIntervalSeconds(triggers.intervalSeconds) })
+        : triggers.afterReconnect
+          ? t("Plays after an automatic reconnect")
+          : t("Sequences of keys, clicks and waits played on each window");
 
   const tabs: {
     id: AfkModeTab;
@@ -66,7 +79,7 @@ export function AfkModeView({
       // o "rodando" é o do Modo AFK no modo gravação.
       id: "recordings",
       label: t("Recordings"),
-      hint: t("Sequences of keys, clicks and waits played on each window"),
+      hint: recordingsHint,
       Icon: Clapperboard,
       running: store.afkStatus?.active === true && store.afkStatus?.mode === "recording",
     },

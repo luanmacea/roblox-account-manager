@@ -224,6 +224,64 @@ describe("RecordingsTab — qual gravação toca", () => {
     await userEvent.click(screen.getByRole("button", { name: "Play after an automatic reconnect" }));
     expect(store.updateSetting).toHaveBeenCalledWith("Recordings", "AfterReconnect", "true");
   });
+
+  /**
+   * Pedido do dono: o Modo AFK repete a gravação de minutos em minutos — e isso
+   * se liga daqui também, sem ter de achar "What to send" na outra aba.
+   */
+  it("liga a repetição no Modo AFK e o intervalo em minutos e segundos, daqui mesmo", async () => {
+    const { store } = renderTab();
+    await screen.findByLabelText("Recording name");
+    const repeat = screen.getByRole("switch", { name: "Repeat in AFK mode" });
+    expect(repeat).toHaveAttribute("aria-checked", "false");
+    expect(screen.queryByLabelText("Repeat every: minutes")).not.toBeInTheDocument();
+    await userEvent.click(repeat);
+    expect(store.updateSetting).toHaveBeenCalledWith("Afk", "Mode", "recording");
+  });
+
+  it("com o modo gravação, mostra o intervalo e grava cada parte", async () => {
+    const settings = defaultSettings() as Record<string, Record<string, string>>;
+    settings.Afk = { Mode: "recording", IntervalMinutes: "2", IntervalSeconds: "30" };
+    settings.Recordings = { AfterReconnect: "false", AfterReconnectDelaySeconds: "45" };
+    const { store } = renderTab({ settings: settings as never });
+    await screen.findByLabelText("Recording name");
+    expect(screen.getByRole("switch", { name: "Repeat in AFK mode" })).toHaveAttribute("aria-checked", "true");
+    const minutes = screen.getByLabelText("Repeat every: minutes");
+    expect(minutes).toHaveValue("2");
+    expect(screen.getByLabelText("Repeat every: seconds")).toHaveValue("30");
+    await userEvent.clear(minutes);
+    await userEvent.type(minutes, "5");
+    await userEvent.tab();
+    expect(store.updateSetting).toHaveBeenCalledWith("Afk", "IntervalMinutes", "5");
+
+    await userEvent.click(screen.getByRole("switch", { name: "Repeat in AFK mode" }));
+    expect(store.updateSetting).toHaveBeenCalledWith("Afk", "Mode", "key");
+  });
+
+  it("com o Modo AFK ligado, a repetição não muda por baixo dele", async () => {
+    renderTab({ afkStatus: { active: true, mode: "recording" } as never });
+    await screen.findByLabelText("Recording name");
+    expect(screen.getByRole("switch", { name: "Repeat in AFK mode" })).toHaveAttribute("aria-disabled", "true");
+  });
+
+  /** "Por gravação": a aberta no editor diz para quem toca e vira a de todas num clique. */
+  it("a gravação aberta diz para quem toca e vira a de todas as contas num clique", async () => {
+    renderTab();
+    await screen.findByLabelText("Recording name");
+    const box = screen.getByTestId("recording-use");
+    expect(box).toHaveTextContent("No account plays this recording yet.");
+    await userEvent.click(within(box).getByRole("button", { name: "Use for all accounts" }));
+    expect(calls("set_default_recording")[0][1]).toEqual({ id: "rec-1" });
+  });
+
+  it("a gravação de todas as contas diz isso, sem o botão", async () => {
+    payload = library({ defaultId: "rec-1", accountIds: { "22": "rec-1" } });
+    renderTab();
+    await screen.findByLabelText("Recording name");
+    const box = screen.getByTestId("recording-use");
+    expect(box).toHaveTextContent("Plays for every account that has no recording of its own.");
+    expect(within(box).queryByRole("button", { name: "Use for all accounts" })).not.toBeInTheDocument();
+  });
 });
 
 describe("RecordingsTab — tocar agora e parar", () => {

@@ -67,9 +67,29 @@ dono: configuração de muitas contas não vai para o painel de uma conta — ve
 - **Which recording plays:** a de **todas as contas** e, por conta, a **própria**
   (que vence) ou "Same as all accounts". A lista mostra as contas com cliente
   aberto pelo app e as que já têm gravação própria.
-- **When it plays:** "Play after an automatic reconnect" e o tempo no jogo antes
-  de tocar; o Modo AFK é escolhido na aba **AFK clicks** ("What to send" →
-  "Play the recording").
+- **When it plays** (pedido do dono, 11/10/2026: os dois gatilhos à vista, sem
+  caçar): **Repeat in AFK mode** liga o modo gravação do Modo AFK
+  (`Afk.Mode = recording`; desligar volta a `key`) e, ligado, mostra o
+  intervalo em **minutos + segundos** (`Afk.IntervalMinutes`/`IntervalSeconds`,
+  os mesmos da aba AFK clicks); com o Modo AFK rodando, fica travado (a sessão
+  usa o que começou com ela). Depois, "Play after an automatic reconnect" e o
+  tempo no jogo antes de tocar. As contas e o Iniciar continuam na aba **AFK
+  clicks**. As duas abas gravam pelo `store.updateSetting` e ficam montadas
+  juntas: a AFK clicks segue o INI quando ele muda pela aba Recordings
+  (`useClicksController`).
+- **A gravação aberta** (salva, sem mudança): diz para quem toca ("Plays for
+  every account that has no recording of its own", "Plays for N account(s) as
+  their own recording" ou "No account plays this recording yet"), com **Use for
+  all accounts** (vira a de todas as contas), e as duas linhas de quando toca
+  (`RecordingTriggerLines`: "AFK mode: plays it every 2 min 30 s." / "After an
+  automatic reconnect: plays once, 30 s after the account is back in the
+  game.").
+- **Fora da aba:** o cartão da aba no Modo AFK troca a descrição pelo gatilho
+  ("Every 2 min 30 s in AFK mode, and after a reconnect"), e a página
+  **Session** tem o cartão **Recordings** no resumo (a gravação de todas as
+  contas, quantas têm a própria, as duas linhas e **Open Recordings**, que abre
+  o Modo AFK na aba Recordings). Regras puras em
+  [recordings/triggers.ts](../../src/components/afk-mode/recordings/triggers.ts).
 - Barra de estado: "Playing a recording" e **Stop playing** enquanto uma
   reprodução avulsa roda (evento `recording-playback`).
 
@@ -371,9 +391,15 @@ Suíte `recordings` (`bun run t recordings`):
   o quê, gatilho da reconexão no INI, tocar agora, erros por conta, parar; a
   importação do TinyTask (janela escolhida, rascunho com resumo, salvar com
   `sourceAspect`, testar numa conta só, erro do arquivo, sem cliente aberto,
-  aviso de formato de janela); e o modo gravação dos cliques AFK.
+  aviso de formato de janela); repetir no Modo AFK e o intervalo ligados daqui,
+  travados com o Modo AFK rodando; para quem a gravação aberta toca e "Use for
+  all accounts"; e o modo gravação dos cliques AFK.
   `recordings.test.ts` — regras puras (inclusive nome do arquivo e
-  `aspectDiffers`).
+  `aspectDiffers`). `recordings/triggers.test.ts` — o resumo dos gatilhos (INI,
+  padrões, escolha apagada, limites, intervalo em min e s).
+  `ClicksTab.test.tsx` — a aba AFK clicks segue o INI mudado pela aba
+  Recordings. `AfkModeView.test.tsx` — o cartão da aba diz o gatilho.
+  `SessionPage.test.tsx` — o cartão Recordings do resumo e o atalho.
 
 Tecla, clique e janela de verdade ficam fora de teste: precisam de um cliente
 Roblox aberto. **Falta teste do dono com cliente real.**
