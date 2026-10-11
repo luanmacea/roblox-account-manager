@@ -67,6 +67,17 @@ Qualquer outra chave é livre (editável em "View/Edit Fields").
 3. O usuário digita a senha → `unlock_accounts(password)` → `load_with_password`: calcula `sha512(senha.trim())`, descriptografa, parseia e **guarda em memória o hash e a chave já derivada** (`SessionKey`), reutilizados por todos os saves da sessão.
 4. Falha de criptografia **nunca** impede o app de abrir: `lib.rs` só registra o aviso. É na tela do programa que o usuário lê o que aconteceu.
 
+### Trancar por inatividade (ideia 27)
+
+Opção em Settings › Misc › Security, **desligada por padrão** e só disponível com **senha do app** (com a chave do aparelho a caixa fica desabilitada, dizendo por quê).
+
+1. Ligada, [useInactivityLock](../../src/hooks/useInactivityLock.ts) marca a hora de cada clique, tecla, roda ou movimento **na janela do MultiAlt** e confere a cada 10 s. Janela minimizada ou atrás de outra conta como inatividade.
+2. Passados `General.LockAfterMinutes` minutos (1 a 240, padrão 10), `store.lockApp()` liga `appLocked`.
+3. [App.tsx](../../src/App.tsx) põe a tela de senha (`LockOverlay` → `PasswordScreen mode="lock"`) **por cima** de tudo e deixa o resto `inert`. **Nada é desmontado**: Scripts, o lote de avatares e os ouvintes de eventos continuam vivos, e no backend o Modo AFK, a reconexão, o Auto Rejoin e a fila de launch nem ficam sabendo. Teclas digitadas na tela trancada não chegam aos atalhos da janela.
+4. A senha vai para `verify_app_password` → `AccountStore::verify_password`, que **só confere** se ela abre o arquivo do disco: não relê contas, não troca a sessão, não grava. (O `unlock_accounts` do boot relê tudo do disco — usá-lo aqui trocaria a memória por baixo do que está rodando.)
+5. Senha errada: as três primeiras são livres; depois a próxima tentativa espera 5 s, dobrando até 60 s (`app_lock_retry_delay_secs`), e nem a senha certa passa durante a espera. Acertar zera a contagem.
+6. Sem a caixa "manter conectado" nessa tela: ela é do boot.
+
 ### Migração de `AccountData.json` em texto puro
 
 Acontece na primeira abertura depois da mudança, em `migrate_plain_vault`, **nesta ordem** — ela é o único momento em que o usuário pode perder contas:
@@ -301,6 +312,8 @@ Nem todo comando com cookie renova a sessão — e a diferença é de propósito
 |---|---|---|
 | `General.EncryptionMethod` | `default` | Método escolhido (`default`/`password`), informativo. |
 | `General.EncryptionOnboardingState` | `pending` em instalação nova, `completed` se o INI já existia | Abre o onboarding. |
+| `General.LockOnInactivity` | — (`false`) | Tranca a tela depois de um tempo sem usar a janela; só vale com senha do app. Ver [Trancar por inatividade](#trancar-por-inatividade-ideia-27). |
+| `General.LockAfterMinutes` | — (`10`) | Minutos sem interação até trancar (1 a 240). |
 | `General.AutoCookieRefresh` | `true` | Auto-refresh (ver [authentication.md](authentication.md)). |
 | `General.DisableAgingAlert` | `false` | Esconde indicador de idade. |
 | `General.CheckModerationBeforeLaunch` | `true` | Consulta a moderação logo antes de abrir cada conta e pula a banida/encerrada. |

@@ -608,6 +608,14 @@ export interface StoreValue {
    */
   unlocking: boolean;
   unlock: (password: string, rememberHours?: number) => Promise<void>;
+  /**
+   * Tela trancada por inatividade (ideia 27). Só a tela: o app segue montado
+   * por baixo e nada que esteja rodando para.
+   */
+  appLocked: boolean;
+  lockApp: () => void;
+  /** Confere a senha (`verify_app_password`) e destranca; devolve o erro, se houver. */
+  unlockApp: (password: string) => Promise<string | null>;
   encryptionSetupOpen: boolean;
   encryptionSetupMode: "firstRun" | "settings";
   accountsEncrypted: boolean | null;
@@ -837,6 +845,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [needsPassword, setNeedsPassword] = useState(false);
   const [unlocking, setUnlocking] = useState(false);
+  const [appLocked, setAppLocked] = useState(false);
+  const lockApp = useCallback(() => setAppLocked(true), []);
+  const unlockApp = useCallback(async (password: string): Promise<string | null> => {
+    try {
+      await invoke("verify_app_password", { password });
+      setAppLocked(false);
+      return null;
+    } catch (e) {
+      // Sem senha não há o que conferir (não deveria acontecer: a opção só
+      // vale com senha). Destrancar é melhor que prender a pessoa para sempre.
+      if (String(e).includes("No app password is set")) {
+        setAppLocked(false);
+        return null;
+      }
+      return String(e);
+    }
+  }, []);
   const [encryptionSetupOpen, setEncryptionSetupOpen] = useState(false);
   const [encryptionSetupMode, setEncryptionSetupMode] = useState<"firstRun" | "settings">("firstRun");
   const [accountsEncrypted, setAccountsEncrypted] = useState<boolean | null>(null);
@@ -3520,6 +3545,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     needsPassword,
     unlocking,
     unlock,
+    appLocked,
+    lockApp,
+    unlockApp,
     encryptionSetupOpen,
     encryptionSetupMode,
     accountsEncrypted,

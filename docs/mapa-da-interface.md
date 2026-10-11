@@ -139,7 +139,7 @@ Seções numa lista vertical à esquerda. As mais úteis no dia a dia:
 | `Isolation` | Limpeza de rastros antes de cada launch (cache, registro, MachineGuid, MAC). Windows. |
 | `Versions` | Versão padrão do Roblox e o baixador de versões. |
 | `Optimization` | FPS, gráficos, tamanho de janela e política de processo do Windows — um perfil por papel: `Normal`, `Auto Rejoin Main` e `Auto Rejoin Alt` (os dois últimos só aparecem com o Auto Rejoin ligado e perfis separados). |
-| `Misc` | Sincronia dos campos de launch, shuffle de Job ID, criptografia e "lembrar senha". |
+| `Misc` | Sincronia dos campos de launch, shuffle de Job ID, criptografia, **trancar por inatividade** (só com senha do app; a tela tranca e tudo continua rodando) e "lembrar senha". |
 
 **Dois interruptores em General mudam o app inteiro:** `Multi Roblox` (várias instâncias ao mesmo tempo) e `Auto Rejoin` (destrava todo o ciclo de rejoin automático). Sem eles ligados, várias funcionalidades simplesmente não aparecem.
 

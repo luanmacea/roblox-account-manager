@@ -7,6 +7,8 @@ import { NumberField } from "../ui/NumberField";
 import { Divider } from "../ui/Divider";
 import { SectionLabel } from "../ui/SectionLabel";
 import { useTr } from "../../i18n/text";
+import { useStore } from "../../store";
+import { LOCK_MINUTES_DEFAULT, LOCK_MINUTES_MAX, LOCK_MINUTES_MIN } from "../../utils/inactivityLock";
 
 export function MiscellaneousTab({
   s,
@@ -16,6 +18,9 @@ export function MiscellaneousTab({
   onRequestEncryptionSetup?: () => void;
 }) {
   const t = useTr();
+  const store = useStore();
+  // Trancar por inatividade só faz sentido com senha do app (ideia 27).
+  const hasAppPassword = store.accountsEncrypted === true;
   const [remembered, setRemembered] = useState<RememberState | null>(null);
 
   useEffect(() => {
@@ -95,6 +100,30 @@ export function MiscellaneousTab({
         >
           {t("Open")}
         </button>
+      </div>
+
+      <div className="mt-2">
+        <Toggle
+          checked={hasAppPassword && s.getBool("General", "LockOnInactivity")}
+          onChange={(v) => s.setBool("General", "LockOnInactivity", v)}
+          disabled={!hasAppPassword}
+          label="Lock after inactivity"
+          description={
+            hasAppPassword
+              ? "Shows the password screen after the minutes below without using the MultiAlt window. Launches, AFK Mode and reconnects keep running."
+              : "Needs an app password. Set one with Change Encryption Method above."
+          }
+        />
+        <NumberField
+          value={s.getNumber("General", "LockAfterMinutes", LOCK_MINUTES_DEFAULT)}
+          onChange={(v) => s.setNumber("General", "LockAfterMinutes", v)}
+          label="Lock after"
+          description="Minutes without a click or key press in the MultiAlt window."
+          disabled={!hasAppPassword || !s.getBool("General", "LockOnInactivity")}
+          min={LOCK_MINUTES_MIN}
+          max={LOCK_MINUTES_MAX}
+          suffix="min"
+        />
       </div>
 
       {remembered?.supported && (

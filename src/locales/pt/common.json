@@ -2326,5 +2326,14 @@
   "Copy the summary, open the form and paste it into the description. Nothing leaves your PC until you submit the form on GitHub.": "Copie o resumo, abra o formulário e cole na descrição. Nada sai do seu PC até você enviar o formulário no GitHub.",
   "Open the form": "Abrir o formulário",
   "Summary preview": "Prévia do resumo",
-  "This is everything that would go along. Read it before copying.": "Isto é tudo o que iria junto. Leia antes de copiar."
+  "This is everything that would go along. Read it before copying.": "Isto é tudo o que iria junto. Leia antes de copiar.",
+  "Lock after": "Trancar depois de",
+  "Lock after inactivity": "Trancar por inatividade",
+  "Locked after a while without use. Enter your password to continue; everything you started keeps running.": "Trancado depois de um tempo sem uso. Digite a senha para continuar; tudo o que foi iniciado continua rodando.",
+  "Minutes without a click or key press in the MultiAlt window.": "Minutos sem clique nem tecla na janela do MultiAlt.",
+  "MultiAlt is locked": "O MultiAlt está trancado",
+  "Needs an app password. Set one with Change Encryption Method above.": "Precisa de uma senha do app. Defina uma em Change Encryption Method, acima.",
+  "Shows the password screen after the minutes below without using the MultiAlt window. Launches, AFK Mode and reconnects keep running.": "Mostra a tela de senha depois dos minutos abaixo sem usar a janela do MultiAlt. Launches, Modo AFK e reconexões continuam rodando.",
+  "Too many wrong passwords. Wait {{seconds}} seconds and try again.": "Muitas senhas erradas. Espere {{seconds}} segundos e tente de novo.",
+  "Wrong password.": "Senha errada."
 }

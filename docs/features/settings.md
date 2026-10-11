@@ -104,6 +104,8 @@ Todos os valores são strings; booleanos são `"true"`/`"false"` (qualquer outra
 | `BottingPlayerGraceMinutes` | `15` | Carência para contas main (papel `player` no INI). Sem campo na tela desde 03/10/2026 (a tela não tem mais conta main); vai no Start com o valor do INI. |
 | `BottingDraft*` (`PlaceId`, `JobId`, `LaunchData`, `PlayerAccountId(s)`, `SelectedUserIds`) | `""` | Rascunho do Auto Rejoin. Desde 03/10/2026 só `PlaceId`/`JobId` são gravados e lidos (o último jogo escolhido, gravado no Start com "um jogo que eu escolher"); `LaunchData`, `PlayerAccountId(s)` e `SelectedUserIds` ficam sem efeito. |
 | `EncryptionMethod` | `default` | `default` ou `password` (ver [accounts.md](accounts.md)). |
+| `LockOnInactivity` | — (false) | Settings › Misc › Security: tranca a tela (só a tela; nada para de rodar) depois de `LockAfterMinutes` sem usar a janela. Só com senha do app — sem ela o interruptor fica desabilitado. Ver [accounts.md](accounts.md#trancar-por-inatividade-ideia-27). |
+| `LockAfterMinutes` | — (10) | Minutos sem clique nem tecla na janela até trancar (1 a 240). |
 | `EncryptionOnboardingState` | `pending` (novo) / `completed` (INI existente) | Onboarding de criptografia. |
 | `FirstRunWalkthroughState` | `pending` (novo) / `completed` (INI existente) | Walkthrough; vira `skipped`/`completed`. |
 | `SavedPlaceId` / `SavedJobId` / `SavedLaunchData` | — | Últimos valores de launch. |

@@ -468,3 +468,44 @@ describe("App — screen tutorials", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument(), { timeout: 1500 });
   });
 });
+
+describe("App — trancado por inatividade (ideia 27)", () => {
+  it("covers the app with the lock screen without unmounting what is behind it", () => {
+    renderApp({ appLocked: true });
+    const overlay = screen.getByRole("dialog", { name: "MultiAlt is locked" });
+    expect(overlay).toBeInTheDocument();
+    // A lista de contas continua montada (nada para), só fica inerte.
+    const behind = screen.getByText("ann").closest("[inert]");
+    expect(behind).not.toBeNull();
+    expect(overlay.closest("[inert]")).toBeNull();
+  });
+
+  it("shows no lock screen while unlocked", () => {
+    renderApp();
+    expect(screen.queryByRole("dialog", { name: "MultiAlt is locked" })).not.toBeInTheDocument();
+    expect(document.querySelector("[inert]")).toBeNull();
+  });
+
+  it("locks by itself after the set minutes only with the option on and an app password", () => {
+    vi.useFakeTimers();
+    try {
+      const settings = defaultSettings();
+      const on = { ...settings, General: { ...settings.General, LockOnInactivity: "true", LockAfterMinutes: "1" } };
+      const store = renderApp({ settings: on, accountsEncrypted: true });
+      vi.advanceTimersByTime(70_000);
+      expect(store.lockApp).toHaveBeenCalled();
+      cleanup();
+
+      const noPassword = renderApp({ settings: on, accountsEncrypted: false });
+      vi.advanceTimersByTime(10 * 60_000);
+      expect(noPassword.lockApp).not.toHaveBeenCalled();
+      cleanup();
+
+      const off = renderApp({ settings, accountsEncrypted: true });
+      vi.advanceTimersByTime(10 * 60_000);
+      expect(off.lockApp).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});

@@ -387,6 +387,10 @@ export const SUITES: Record<string, TestSuite> = {
       "src/utils",
       "src/featureFlags.test.ts",
       "src/components/dialogs/FeedbackDialog.test.tsx",
+      "src/utils/inactivityLock.test.ts",
+      "src/hooks/useInactivityLock.test.ts",
+      "src/components/layout/LockOverlay.test.tsx",
+      "src/components/settings/inactivityLockSetting.test.tsx",
     ],
   },
   "hidden-names": {
@@ -457,7 +461,13 @@ export const SUITES: Record<string, TestSuite> = {
   },
   support: {
     description: "Pacote Suporte: checagem \"o launch não faz nada\" (16), reportar problema com resumo anonimizado (28), trancar por inatividade (27), Quick Login (12) e reserva do singleton do Roblox (3)",
-    rust: ["launch_diagnostics_tests", "os_version_label_tests", "services_command_tests"],
+    rust: [
+      "launch_diagnostics_tests",
+      "os_version_label_tests",
+      "services_command_tests",
+      "app_lock_command_tests",
+      "app_lock_verify_tests",
+    ],
     front: [
       "src/utils/diagnostics.test.ts",
       "src/components/dialogs/DiagnosticsDialog.test.tsx",
@@ -465,6 +475,10 @@ export const SUITES: Record<string, TestSuite> = {
       "src/utils/anonymize.test.ts",
       "src/utils/problemReport.test.ts",
       "src/components/dialogs/FeedbackDialog.test.tsx",
+      "src/utils/inactivityLock.test.ts",
+      "src/hooks/useInactivityLock.test.ts",
+      "src/components/layout/LockOverlay.test.tsx",
+      "src/components/settings/inactivityLockSetting.test.tsx",
     ],
   },
   performance: {

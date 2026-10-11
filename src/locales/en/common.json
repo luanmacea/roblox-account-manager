@@ -2326,5 +2326,14 @@
   "Copy the summary, open the form and paste it into the description. Nothing leaves your PC until you submit the form on GitHub.": "Copy the summary, open the form and paste it into the description. Nothing leaves your PC until you submit the form on GitHub.",
   "Open the form": "Open the form",
   "Summary preview": "Summary preview",
-  "This is everything that would go along. Read it before copying.": "This is everything that would go along. Read it before copying."
+  "This is everything that would go along. Read it before copying.": "This is everything that would go along. Read it before copying.",
+  "Lock after": "Lock after",
+  "Lock after inactivity": "Lock after inactivity",
+  "Locked after a while without use. Enter your password to continue; everything you started keeps running.": "Locked after a while without use. Enter your password to continue; everything you started keeps running.",
+  "Minutes without a click or key press in the MultiAlt window.": "Minutes without a click or key press in the MultiAlt window.",
+  "MultiAlt is locked": "MultiAlt is locked",
+  "Needs an app password. Set one with Change Encryption Method above.": "Needs an app password. Set one with Change Encryption Method above.",
+  "Shows the password screen after the minutes below without using the MultiAlt window. Launches, AFK Mode and reconnects keep running.": "Shows the password screen after the minutes below without using the MultiAlt window. Launches, AFK Mode and reconnects keep running.",
+  "Too many wrong passwords. Wait {{seconds}} seconds and try again.": "Too many wrong passwords. Wait {{seconds}} seconds and try again.",
+  "Wrong password.": "Wrong password."
 }

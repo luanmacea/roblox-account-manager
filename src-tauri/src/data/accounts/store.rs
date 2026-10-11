@@ -893,6 +893,23 @@ impl AccountStore {
         Ok(())
     }
 
+    /// A senha abre o arquivo do disco? **Só confere**: não troca a sessão, não
+    /// relê as contas para a memória, não grava nada. É o que destranca a tela
+    /// de "trancado por inatividade" (ideia 27) sem mexer no que está rodando
+    /// por baixo (AFK, reconexão, Auto Rejoin continuam com a sessão de agora).
+    ///
+    /// `Err` quando não há senha do usuário para conferir — trancar sem senha
+    /// não faz sentido, e a UI nem liga o recurso nesse caso.
+    pub fn verify_password(&self, password: &str) -> Result<bool, String> {
+        if !self.has_user_password()? {
+            return Err("No app password is set.".to_string());
+        }
+        let data =
+            fs::read(&self.file_path).map_err(|e| format!("Failed to read account file: {}", e))?;
+        let hash = crypto::hash_password(password.trim());
+        Ok(crypto::decrypt(&data, &hash).is_ok())
+    }
+
     pub fn load_with_password(&self, password: &str) -> Result<(), String> {
         // O unlock é o único ponto que paga o argon2: a chave derivada aqui é
         // reutilizada por todas as gravações da sessão.
@@ -4258,5 +4275,69 @@ mod account_token_swap_tests {
         assert!(store.set_valid(1, true).unwrap());
         assert!(!store.set_valid(99, false).unwrap(), "unknown account");
         assert_eq!(token_of(&store, 1), "TOKEN", "the cookie is never touched");
+    }
+}
+
+#[cfg(test)]
+mod app_lock_verify_tests {
+    use super::*;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    struct Temp(AccountStore);
+
+    impl Drop for Temp {
+        fn drop(&mut self) {
+            let path = self.0.file_path.clone();
+            let _ = fs::remove_file(&path);
+            let _ = fs::remove_file(path.with_extension("key"));
+            let _ = fs::remove_file(path.with_extension("json.bak"));
+        }
+    }
+
+    fn temp(tag: &str) -> Temp {
+        crypto::init();
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos();
+        let store = AccountStore::new(std::env::temp_dir().join(format!("ram-lock-{tag}-{nanos}.json")));
+        store.load().expect("new vault");
+        store
+            .add(Account::new("COOKIE".to_string(), "Main".to_string(), 1))
+            .expect("add");
+        Temp(store)
+    }
+
+    #[test]
+    fn the_right_password_unlocks_and_a_wrong_one_does_not() {
+        let t = temp("verify");
+        t.0.set_password(Some("senha-bem-comprida")).expect("set password");
+        assert_eq!(t.0.verify_password("senha-bem-comprida"), Ok(true));
+        assert_eq!(t.0.verify_password("  senha-bem-comprida  "), Ok(true), "trimmed like the unlock");
+        assert_eq!(t.0.verify_password("outra-senha"), Ok(false));
+        assert_eq!(t.0.verify_password(""), Ok(false));
+    }
+
+    #[test]
+    fn checking_never_touches_the_accounts_in_memory_or_on_disk() {
+        let t = temp("untouched");
+        t.0.set_password(Some("senha-bem-comprida")).expect("set password");
+        let before = fs::read(&t.0.file_path).unwrap();
+        // Uma mudança que só existe em memória (gravação de fundo em andamento)
+        // não pode ser trocada pelo que está no disco.
+        t.0.accounts.lock().unwrap()[0].alias = "in memory only".to_string();
+
+        assert_eq!(t.0.verify_password("errada"), Ok(false));
+        assert_eq!(t.0.verify_password("senha-bem-comprida"), Ok(true));
+
+        assert_eq!(t.0.get_all().unwrap()[0].alias, "in memory only");
+        assert_eq!(fs::read(&t.0.file_path).unwrap(), before, "verifying wrote to the file");
+        assert!(t.0.has_user_password().unwrap(), "the session is still the password one");
+    }
+
+    #[test]
+    fn without_an_app_password_there_is_nothing_to_verify() {
+        let t = temp("no-password");
+        assert!(t.0.verify_password("anything").is_err());
     }
 }

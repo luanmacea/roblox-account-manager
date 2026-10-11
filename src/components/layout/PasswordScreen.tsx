@@ -4,6 +4,7 @@ import { useStore } from "../../store";
 import type { RememberState } from "../../types";
 import { useTr } from "../../i18n/text";
 import { ModalWindowControls } from "./ModalWindowControls";
+import { lockErrorText } from "../../utils/inactivityLock";
 
 type RestrictedBackgroundStyle = "waves" | "warp" | "warpLegacy" | "bubbles";
 
@@ -682,12 +683,21 @@ function RestrictedBubblesBackground() {
   );
 }
 
-export function PasswordScreen() {
+/**
+ * `unlock`: a tela de senha do boot (abre o vault).
+ * `lock`: o app trancado por inatividade (ideia 27) — só confere a senha
+ * (`store.unlockApp`), sem reler as contas nem parar o que está rodando, e sem
+ * a caixa "manter conectado", que não faz sentido aqui.
+ */
+export function PasswordScreen({ mode = "unlock" }: { mode?: "unlock" | "lock" }) {
   const t = useTr();
   const store = useStore();
+  const isLock = mode === "lock";
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
   const [rememberState, setRememberState] = useState<RememberState | null>(null);
+  const [lockBusy, setLockBusy] = useState(false);
+  const [lockError, setLockError] = useState<string | null>(null);
 
   /**
    * A caixa só aparece onde o sistema guarda a senha com proteção própria
@@ -695,6 +705,7 @@ export function PasswordScreen() {
    * digitá-la.
    */
   useEffect(() => {
+    if (isLock) return;
     let disposed = false;
     invoke<RememberState>("remembered_unlock_state")
       .then((state) => {
@@ -708,14 +719,27 @@ export function PasswordScreen() {
     return () => {
       disposed = true;
     };
-  }, []);
+  }, [isLock]);
 
   const rememberHours = rememberState?.defaultHours ?? 24;
 
   function submit() {
     if (!password) return;
+    if (isLock) {
+      if (lockBusy) return;
+      setLockBusy(true);
+      setLockError(null);
+      void store.unlockApp(password).then((error) => {
+        setLockBusy(false);
+        setLockError(error);
+        if (!error) setPassword("");
+      });
+      return;
+    }
     void store.unlock(password, remember ? rememberHours : undefined);
   }
+  const shownError = isLock ? (lockError ? lockErrorText(lockError, t) : null) : store.error;
+  const busy = isLock ? lockBusy : store.unlocking;
   const restrictedBackgroundStyle = normalizeRestrictedBackgroundStyle(store.settings?.General?.RestrictedBackgroundStyle);
 
   return (
@@ -736,10 +760,12 @@ export function PasswordScreen() {
             className="restricted-auth-title text-xl font-semibold text-[var(--panel-fg)] animate-fade-in-up"
             style={{ animationDelay: "0.05s" }}
           >
-            {t("Restricted Access")}
+            {isLock ? t("MultiAlt is locked") : t("Restricted Access")}
           </h1>
           <p className="restricted-auth-subtitle mt-2 text-sm theme-muted animate-fade-in-up" style={{ animationDelay: "0.1s" }}>
-            {t("Enter your password to continue")}
+            {isLock
+              ? t("Locked after a while without use. Enter your password to continue; everything you started keeps running.")
+              : t("Enter your password to continue")}
           </p>
         </div>
 
@@ -747,9 +773,9 @@ export function PasswordScreen() {
           className="restricted-auth-card theme-panel theme-border rounded-xl border p-6 shadow-2xl backdrop-blur-lg animate-fade-in-up"
           style={{ animationDelay: "0.2s" }}
         >
-          {store.error && (
-            <div className="mb-4 rounded-lg bg-red-500/10 border border-red-500/20 px-4 py-2.5 text-sm text-red-400 animate-fade-in">
-              {store.error}
+          {shownError && (
+            <div role="alert" className="mb-4 rounded-lg bg-red-500/10 border border-red-500/20 px-4 py-2.5 text-sm text-red-400 animate-fade-in">
+              {shownError}
             </div>
           )}
           <input
@@ -761,7 +787,7 @@ export function PasswordScreen() {
             className="restricted-auth-input theme-input mb-4 w-full rounded-lg px-4 py-2.5 text-sm focus:outline-none transition-colors"
             autoFocus
           />
-          {rememberState?.supported && (
+          {!isLock && rememberState?.supported && (
             <label className="mb-4 flex items-center gap-2 text-[12px] theme-muted cursor-pointer select-none">
               <input
                 type="checkbox"
@@ -774,10 +800,10 @@ export function PasswordScreen() {
           )}
           <button
             onClick={submit}
-            disabled={store.unlocking || !password}
+            disabled={busy || !password}
             className="restricted-auth-btn theme-btn w-full rounded-lg px-4 py-2.5 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {store.unlocking ? t("Unlocking...") : t("Continue")}
+            {busy ? t("Unlocking...") : t("Continue")}
           </button>
         </div>
       </div>

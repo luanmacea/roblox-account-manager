@@ -413,6 +413,7 @@ pub fn run() {
             data::accounts::needs_password,
             data::accounts::vault_key_warning,
             data::accounts::set_encryption_password,
+            data::accounts::verify_app_password,
             data::accounts::reorder_accounts,
             data::accounts::import_old_account_data,
             data::scripts::get_scripts,

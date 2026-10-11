@@ -11,6 +11,9 @@ import { ModalWindowControls } from "./components/layout/ModalWindowControls";
 import { UpdateBanner } from "./components/layout/UpdateBanner";
 import { SafeModeBanner } from "./components/layout/SafeModeBanner";
 import { VaultKeyBanner } from "./components/layout/VaultKeyBanner";
+import { LockOverlay } from "./components/layout/LockOverlay";
+import { useInactivityLock } from "./hooks/useInactivityLock";
+import { inactivityLockActive, normalizeLockMinutes } from "./utils/inactivityLock";
 import { Toolbar } from "./components/layout/Toolbar";
 import { AccountList } from "./components/accounts/AccountList";
 import { ContextMenu } from "./components/menus/ContextMenu";
@@ -87,6 +90,17 @@ function AppContent() {
   // antecipados para valer também na tela de senha. Ver uiScale.ts.
   useUiScale(store.settings?.General?.InterfaceScale, store.settings !== null);
 
+  // Trancar por inatividade (ideia 27): só com a opção ligada e senha do app.
+  // Antes dos `return` antecipados, como todo hook.
+  useInactivityLock(
+    store.initialized &&
+      !store.needsPassword &&
+      inactivityLockActive(store.settings?.General?.LockOnInactivity, store.accountsEncrypted),
+    normalizeLockMinutes(store.settings?.General?.LockAfterMinutes),
+    store.appLocked,
+    store.lockApp
+  );
+
   useEffect(() => {
     if (!store.initialized || store.needsPassword || store.firstRunWalkthroughOpen) return;
     if (hasCheckedForUpdatesRef.current) return;
@@ -136,7 +150,11 @@ function AppContent() {
   }
 
   return (
-    <div className="theme-app flex h-screen flex-col">
+    <>
+    {/* Trancado: a janela inteira fica `inert` (nem foco nem clique) e a tela de
+        senha vem por cima — nada é desmontado, então nada que roda para. */}
+    {store.appLocked && <LockOverlay />}
+    <div className="theme-app flex h-screen flex-col" inert={store.appLocked || undefined}>
       <ModalWindowControls visible={anyModalOpen} />
       <TitleBar controlsHidden={anyModalOpen} />
       <UpdateBanner />
@@ -345,6 +363,7 @@ function AppContent() {
         </div>
       )}
     </div>
+    </>
   );
 }
 

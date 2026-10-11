@@ -196,6 +196,10 @@ const baseHandler: InvokeHandler = (cmd, args) => {
       return null;
     // Checagem "o launch não faz nada" (ideia 16): um aviso para a tela ter o
     // que mostrar; a ordem é a do backend.
+    // Tela trancada por inatividade (ideia 27): qualquer senha não vazia.
+    case "verify_app_password":
+      if (!String(args?.password ?? "")) throw "Wrong password.";
+      return null;
     // Resumo do "Reportar problema" (ideia 28).
     case "get_report_environment":
       return { version: "0.0.0-harness", edition: "standard", os: "Windows 11 (harness)" };
