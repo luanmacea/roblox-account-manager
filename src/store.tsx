@@ -23,6 +23,7 @@ import type {
   UnidentifiedClient,
   ClientDrop,
   ClientHealth,
+  ClientMemory,
   AutoReconnectEntry,
   AutoReconnectPayload,
   VaultKeyWarning,
@@ -157,6 +158,8 @@ interface RunningInstanceEntry {
   adopted?: boolean;
   /** Queda lida do log (`commands/client_health.rs`). */
   health?: ClientHealth | null;
+  /** Memória e limite (`commands/memory_ceiling.rs`); só cliente do app. */
+  memory?: ClientMemory | null;
 }
 
 interface OptimizationWarningPayload {
@@ -278,6 +281,12 @@ export interface AfkStatus {
   clickX: number;
   clickY: number;
   accounts: AfkAccountStatus[];
+  /**
+   * O ciclo está na hora mas espera: há uma janela em tela cheia de outro
+   * programa na frente (`Afk.WaitForFullscreen`). O backend sempre manda;
+   * opcional só para os retratos antigos dos testes.
+   */
+  waitingFullscreen?: boolean;
 }
 
 export interface AfkStartConfig {
@@ -470,6 +479,11 @@ export interface StoreValue {
   unidentifiedClients: UnidentifiedClient[];
   /** Queda (com motivo) de cada conta em jogo, lida do log do Roblox. */
   clientHealth: Map<number, ClientHealth>;
+  /**
+   * Memória e limite de cada cliente que o app abriu (teto de memória, só com
+   * a feature `memory-trim`). Atualizado no mesmo polling de 2,5 s.
+   */
+  clientMemory: Map<number, ClientMemory>;
   /** Diz ao app de quem é um cliente não identificado (não fecha nada). */
   identifyExternalClient: (pid: number, userId: number) => Promise<boolean>;
   /** Traz para a frente a janela de um cliente pelo PID. */
@@ -828,6 +842,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [adoptedClients, setAdoptedClients] = useState<Set<number>>(new Set());
   const [unidentifiedClients, setUnidentifiedClients] = useState<UnidentifiedClient[]>([]);
   const [clientHealth, setClientHealth] = useState<Map<number, ClientHealth>>(new Map());
+  const [clientMemory, setClientMemory] = useState<Map<number, ClientMemory>>(new Map());
   // O efeito do polling registra aqui o seu refresh, para identificar um
   // cliente refletir na hora em vez de esperar o próximo tique.
   const refreshRunningRef = useRef<() => Promise<void>>(async () => {});
@@ -3068,18 +3083,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const next = new Set<number>();
         const adopted = new Set<number>();
         const health = new Map<number, ClientHealth>();
+        const memory = new Map<number, ClientMemory>();
         for (const row of rows) {
           const userId = row.userId ?? row.user_id;
           if (typeof userId === "number") {
             next.add(userId);
             if (row.adopted) adopted.add(userId);
             if (row.health) health.set(userId, row.health);
+            if (row.memory) memory.set(userId, row.memory);
           }
         }
         if (!cancelled) {
           setLaunchedByProgram(next);
           setAdoptedClients(adopted);
           setClientHealth(health);
+          setClientMemory(memory);
         }
       } catch {
       }
@@ -3212,6 +3230,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }),
       listen<{ userId: number; memoryMb: number }>("roblox-low-memory", (e) => {
         addToast(tr("Watcher: low memory {{memoryMb}}MB ({{userId}})", { memoryMb: e.payload.memoryMb, userId: e.payload.userId }));
+      }),
+      // Teto de memória (memory_ceiling.rs): continuou acima depois de liberar.
+      listen<{ userId: number; memoryMb: number; limitMb: number }>("roblox-memory-limit", (e) => {
+        addToast(
+          tr("Closed {{name}}: memory stayed over its limit after it was freed", {
+            name: accountLabel(accountsRef.current.find((a) => a.UserID === e.payload.userId), nameMaskingRef.current, e.payload.userId),
+          }),
+          "warn"
+        );
       }),
       listen<{ userId: number; expected: string }>("roblox-title-mismatch", (e) => {
         addToast(tr("Watcher: title mismatch for {{userId}} ({{expected}})", { userId: e.payload.userId, expected: e.payload.expected }));
@@ -3449,6 +3476,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     adoptedClients,
     unidentifiedClients,
     clientHealth,
+    clientMemory,
     identifyExternalClient,
     focusClientWindow,
     joinServer,

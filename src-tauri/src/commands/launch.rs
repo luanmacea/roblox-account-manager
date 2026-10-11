@@ -2315,6 +2315,9 @@ struct RunningInstance {
     /// Queda lida do log do cliente — ver client_health.rs. `None` enquanto o
     /// monitor não viu este PID.
     health: Option<ClientHealthView>,
+    /// Memória e limite do cliente — ver memory_ceiling.rs. `None` para o
+    /// cliente do site e sem a feature `memory-trim`.
+    memory: Option<ClientMemoryView>,
 }
 
 #[tauri::command]
@@ -2328,6 +2331,7 @@ fn get_running_instances() -> Result<Vec<RunningInstance>, String> {
                 pid: p.pid,
                 user_id: p.user_id,
                 health: client_health_of(p.user_id, p.pid),
+                memory: client_memory_of(p.user_id),
                 browser_tracker_id: p.browser_tracker_id,
                 adopted: p.adopted,
             })
@@ -2344,6 +2348,7 @@ fn get_running_instances() -> Result<Vec<RunningInstance>, String> {
                 browser_tracker_id: p.browser_tracker_id,
                 adopted: false,
                 health: None,
+                memory: None,
             })
             .collect());
     }
@@ -2402,11 +2407,24 @@ fn cmd_get_roblox_path() -> Result<String, String> {
 }
 
 #[tauri::command]
-fn cmd_apply_fps_unlock(max_fps: u32) -> Result<(), String> {
+fn cmd_apply_fps_unlock(
+    settings: tauri::State<'_, SettingsStore>,
+    max_fps: u32,
+) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
-        return platform::windows::apply_fps_unlock(max_fps);
+        use platform::windows;
+        // Também entra no que é devolvido ao fechar (ideia 21).
+        let snapshot = restore_roblox_settings_enabled(settings.inner())
+            .then(|| windows::snapshot_roblox_settings(windows::roblox_settings_files(None)));
+        let result = windows::apply_fps_unlock(max_fps);
+        if let Some(snapshot) = snapshot {
+            windows::record_roblox_settings_change(snapshot);
+        }
+        return result;
     }
+    #[cfg(not(target_os = "windows"))]
+    let _ = &settings;
     #[cfg(target_os = "macos")]
     {
         return platform::macos::apply_fps_unlock(max_fps);
@@ -3646,9 +3664,19 @@ mod launch_command_tests {
                 }),
                 exited: false,
             }),
+            memory: Some(ClientMemoryView {
+                memory_mb: Some(2500),
+                limit_mb: Some(2048),
+                over: true,
+                trimmed_at_ms: Some(9),
+            }),
         })
         .unwrap();
         assert_eq!(json["pid"], 42);
+        // Memória e limite (memory_ceiling.rs), em camelCase como a UI lê.
+        assert_eq!(json["memory"]["memoryMb"], 2500);
+        assert_eq!(json["memory"]["limitMb"], 2048);
+        assert_eq!(json["memory"]["over"], true);
         assert_eq!(json["user_id"], 7);
         assert_eq!(json["browser_tracker_id"], "12345");
         // Cliente aberto pelo site e reconhecido pelo log (ver external_clients.rs).

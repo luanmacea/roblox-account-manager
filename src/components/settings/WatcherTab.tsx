@@ -120,7 +120,7 @@ export function WatcherTab({ s }: { s: UseSettingsReturn }) {
         onChange={(v) => s.setBool("Watcher", "CloseRbxMemory", v)}
         label="Close If Memory Low"
         // Working set ABAIXO do limite: a regra e de cliente travado, nao de consumo alto.
-        description="Closes a client whose memory drops below the threshold, the usual sign of one that froze."
+        description="Closes a client whose memory drops below the threshold, the usual sign of one that froze. With a memory limit set, it also closes a client that stays over it after MultiAlt freed its memory."
       />
       <NumberField
         value={s.getNumber("Watcher", "MemoryLowValue", 200)}

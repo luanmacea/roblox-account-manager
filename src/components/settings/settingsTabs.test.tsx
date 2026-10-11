@@ -885,6 +885,24 @@ describe("OptimizationTab", () => {
     await expectSaved("Optimization", "MuteBackgroundClients", "true");
   });
 
+  /** Teto de memória: o padrão de todos os clientes, só com a feature `memory-trim`. */
+  it("offers the memory limit per client only when the build can free memory", async () => {
+    stored = {};
+    setStore({
+      platformCapabilities: { os: "windows", supportsMemoryTrim: true } as PlatformCapabilities,
+    });
+    renderTab((s) => <OptimizationTab s={s} />);
+    const field = await screen.findByLabelText("Memory limit per client");
+    expect(field).toHaveValue("0");
+    expect(screen.getByText(/asks Windows to free the client's memory first/)).toBeInTheDocument();
+  });
+
+  it("hides the memory limit when the build cannot free memory", async () => {
+    renderOptimization({});
+    await screen.findByRole("switch", { name: /Follow the window in use/ });
+    expect(screen.queryByLabelText("Memory limit per client")).not.toBeInTheDocument();
+  });
+
   it("hides the mute option when the build has no live audio", async () => {
     renderOptimization({});
     await screen.findByRole("switch", { name: /Follow the window in use/ });
@@ -941,6 +959,27 @@ describe("OptimizationTab", () => {
     renderOptimization({});
     await screen.findByRole("switch", { name: /Arrange in grid on launch/ });
     expect(screen.queryByText(/Grid options are the same for every profile/)).not.toBeInTheDocument();
+  });
+
+  /** Ideia 21: devolver ao fechar o que o launch mudou nos arquivos do Roblox. */
+  it("offers giving the Roblox settings back on close, off by default, and saves it", async () => {
+    renderOptimization({});
+    const toggle = await screen.findByRole("switch", {
+      name: /Restore Roblox settings when MultiAlt closes/,
+    });
+    expect(toggle).toHaveAttribute("aria-checked", "false");
+    expect(screen.getByText(/the game you open from the website/)).toBeInTheDocument();
+
+    await userEvent.click(toggle);
+    await expectSaved("General", "RestoreRobloxSettingsOnExit", "true");
+  });
+
+  it("hides giving the Roblox settings back outside Windows", async () => {
+    renderOptimization({}, "macos");
+    await screen.findByText("Override Window Size");
+    expect(
+      screen.queryByRole("switch", { name: /Restore Roblox settings when MultiAlt closes/ })
+    ).not.toBeInTheDocument();
   });
 
   it("hides the focus-following optimization outside Windows", async () => {

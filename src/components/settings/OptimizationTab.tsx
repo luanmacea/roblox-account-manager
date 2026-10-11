@@ -566,7 +566,11 @@ function WindowInUseSection({ s }: { s: UseSettingsReturn }) {
   const t = useTr();
   // O volume ao vivo usa COM de áudio e só existe no binário com a feature
   // `live-audio` (nas duas edições, via `standard`): sem ela, nada de opção.
-  const liveAudio = useStore().platformCapabilities?.supportsLiveAudio === true;
+  const capabilities = useStore().platformCapabilities;
+  const liveAudio = capabilities?.supportsLiveAudio === true;
+  // Teto de memória (commands/memory_ceiling.rs): só com a feature
+  // `memory-trim` (nas duas edições). Cada conta muda o seu na página Session.
+  const memoryTrim = capabilities?.supportsMemoryTrim === true;
   return (
     <div className="rounded-xl border border-zinc-800/70 bg-zinc-950/35 px-4 py-4">
       <div className="flex items-center justify-between gap-3">
@@ -585,6 +589,17 @@ function WindowInUseSection({ s }: { s: UseSettingsReturn }) {
           onChange={(v) => s.setBool("Optimization", "MuteBackgroundClients", v)}
           label="Mute the Roblox windows you're not using"
           description="Only the window you're playing makes sound. Only windows opened by MultiAlt; turning this off unmutes them."
+        />
+      ) : null}
+      {memoryTrim ? (
+        <NumberField
+          value={s.getNumber("Optimization", "MemoryLimit", 0)}
+          onChange={(v) => s.setNumber("Optimization", "MemoryLimit", v)}
+          label="Memory limit per client"
+          description="Above it, MultiAlt asks Windows to free the client's memory first; it closes the client only if it stays over a minute later and the Watcher's Close If Memory Low is on. 0 = no limit. Each account can have its own on the Session page."
+          min={0}
+          max={65536}
+          suffix="MB"
         />
       ) : null}
     </div>
@@ -677,6 +692,20 @@ export function OptimizationTab({ s }: { s: UseSettingsReturn }) {
             ? t("These settings apply only to Roblox processes launched by MultiAlt")
             : t("Windows-only process policies are unavailable on this platform")}
         </div>
+        {isWindows ? (
+          // Ideia 21: uma chave só, para todos os perfis. O backend anota o
+          // valor de antes da primeira mudança e devolve ao fechar o app
+          // (platform/windows/settings_restore.rs).
+          <>
+            <Divider />
+            <Toggle
+              checked={s.getBool("General", "RestoreRobloxSettingsOnExit")}
+              onChange={(v) => s.setBool("General", "RestoreRobloxSettingsOnExit", v)}
+              label="Restore Roblox settings when MultiAlt closes"
+              description="Puts back your own FPS, volume, graphics, window and FastFlags when MultiAlt closes and no client it opened is still running, so the game you open from the website is not left with them."
+            />
+          </>
+        ) : null}
         {bottingEnabled ? (
           <>
             <Divider />

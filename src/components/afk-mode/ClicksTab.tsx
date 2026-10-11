@@ -85,6 +85,11 @@ export function ClicksTab(props: ClicksTabOptions) {
           running && ctl.statusByUserId.size > 0
             ? t("Sends so far: {{count}}", { count: ctl.totalSends })
             : null,
+          ctl.waitingFullscreen ? (
+            <span key="fullscreen" role="status" className="text-amber-300/90">
+              {t("Waiting: a fullscreen window is in front")}
+            </span>
+          ) : null,
         ]}
         actions={
           running ? (
@@ -229,6 +234,18 @@ function SettingsCard({ ctl }: { ctl: ClicksController }) {
         </>
       )}
       <ToggleRow label="Beep when a cycle finishes" checked={ctl.beepOnCycle} onChange={ctl.setBeepOnCycle} />
+      <div>
+        <ToggleRow
+          label="Wait while a fullscreen window is in front"
+          checked={ctl.waitForFullscreen}
+          onChange={ctl.setWaitForFullscreen}
+        />
+        <div className="text-[11px] theme-muted leading-4">
+          {t(
+            "With a video or another game in fullscreen in front, the cycle waits instead of taking the focus, for up to 5 minutes past the account's turn."
+          )}
+        </div>
+      </div>
       <div className="rounded-lg border theme-border bg-[var(--panel-soft)] px-3 py-2 text-[11px] theme-muted leading-4">
         {t(
           "Each cycle takes the focus away from the window you are using: it brings the Roblox window of each account whose turn it is to the front, one after another, for about half a second each, and gives the focus back only after the last one — about 4 seconds with 10 accounts."

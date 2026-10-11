@@ -51,6 +51,7 @@ Armazenar e gerenciar as contas Roblox (alts) do usuário: sessão (cookie), met
 | `Window_Position_X`, `Window_Position_Y`, `Window_Width`, ... | [watcher.rs](../../src-tauri/src/commands/watcher.rs) | Posição de janela salva pelo Watcher (`SaveWindowPositions`). |
 | `ClientOverridesEnabled`, `ClientOverrideMaxFPS`, `ClientOverrideVolume`, `ClientOverrideGraphics`, `ClientOverrideFullscreen`, `ClientOverrideStartMinimized`, `ClientOverrideWindowWidth`, `ClientOverrideWindowHeight` | [launch_shared.rs](../../src-tauri/src/commands/launch_shared.rs) | Exceções de launch por conta — ver [launch.md](launch.md#exceções-de-launch-por-conta). |
 
+| `MemoryLimit` | [memory_ceiling.rs](../../src-tauri/src/commands/memory_ceiling.rs) | Teto de memória desta conta em MB (`0` = sem limite); seletor na linha da conta em "In game", página Session, e lote com as linhas marcadas. Sem o campo vale `Optimization.MemoryLimit`. Só com a feature `memory-trim`. Ver [watcher.md](watcher.md#teto-de-memória). |
 | `AutoReconnect` | [reconnect.rs](../../src-tauri/src/commands/reconnect.rs) | `true`/`false`: reconexão automática desta conta (chave na linha da conta em "In game", página Session; lote com as linhas marcadas). Sem o campo vale `General.AutoReconnect`. Ver [watcher.md](watcher.md#reconexão-automática). |
 
 Qualquer outra chave é livre (editável em "View/Edit Fields").

@@ -100,6 +100,8 @@ export function useClicksController({ targetUserIds }: ClicksTabOptions = {}) {
   // Quem abriu pelo "Em jogo" já traz as contas marcadas.
   const [draftUserIds, setDraftUserIds] = useState<number[]>(() => targetUserIds ?? []);
   const [beepOnCycle, setBeepOnCycle] = useState(false);
+  // Ligado por padrão: só `"false"` no INI desliga (`afk_wait_for_fullscreen_enabled`).
+  const [waitForFullscreen, setWaitForFullscreen] = useState(true);
   const [busy, setBusy] = useState(false);
   const [sendingNow, setSendingNow] = useState(false);
   const [nowMs, setNowMs] = useState(() => Date.now());
@@ -127,6 +129,7 @@ export function useClicksController({ targetUserIds }: ClicksTabOptions = {}) {
     setKey(afk.Key || "");
     setBeepOnCycle(afk.BeepOnCycle === "true");
     setMode(parseAfkMode(afk.Mode));
+    setWaitForFullscreen(afk.WaitForFullscreen !== "false");
     setDefaultPoint(readAfkSettingsPoint(afk));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -426,6 +429,9 @@ export function useClicksController({ targetUserIds }: ClicksTabOptions = {}) {
     recordingMode,
     recordingNameFor,
     beepOnCycle,
+    waitForFullscreen,
+    /** O ciclo está segurado por uma janela em tela cheia na frente. */
+    waitingFullscreen: running && status?.waitingFullscreen === true,
     inAfk,
     candidates,
     focusDenied,
@@ -449,6 +455,11 @@ export function useClicksController({ targetUserIds }: ClicksTabOptions = {}) {
     setBeepOnCycle: (v: boolean) => {
       setBeepOnCycle(v);
       persist("BeepOnCycle", v ? "true" : "false");
+    },
+    // O backend relê a cada tique: vale com o modo ligado, sem religar.
+    setWaitForFullscreen: (v: boolean) => {
+      setWaitForFullscreen(v);
+      persist("WaitForFullscreen", v ? "true" : "false");
     },
     persist,
     sendErrorText,

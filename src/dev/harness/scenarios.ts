@@ -104,6 +104,8 @@ const baseHandler: InvokeHandler = (cmd, args) => {
         supportsMultiRoblox: true,
         // Mostra no dev:ui as opções que só existem com a feature `live-audio`.
         supportsLiveAudio: true,
+        // E o teto de memória (feature `memory-trim`, nas duas edições).
+        supportsMemoryTrim: true,
       };
     case "remembered_unlock_state":
       return { supported: true, active: false, defaultHours: 24 };
@@ -158,6 +160,7 @@ const baseHandler: InvokeHandler = (cmd, args) => {
         clickX: 50,
         clickY: 50,
         accounts: [],
+        waitingFullscreen: false,
       };
     // Auto Rejoin parado, idem (`bottingStatus.userIds`).
     case "get_botting_mode_status":
@@ -513,6 +516,7 @@ function afkHandler(
       mode: session.mode,
       clickX: session.clickX,
       clickY: session.clickY,
+      waitingFullscreen: false,
       accounts: [...session.accounts.values()]
         .sort((a, b) => a.userId - b.userId)
         .map((entry) => ({
@@ -2275,13 +2279,26 @@ const SCENARIOS: Record<string, () => void> = {
         500
       );
     }
+    // Teto de memória (memory_ceiling.rs): padrão de 2 GB; a 3ª conta tem o
+    // seu. O retrato é o que o backend mandaria — a 2ª está acima e já foi
+    // liberada uma vez. Cliente do site (adotado) não tem memória no retrato.
+    settings.Optimization = { ...settings.Optimization, MemoryLimit: "2048" };
+    if (accounts[2]) accounts[2].Fields = { ...accounts[2].Fields, MemoryLimit: "1536" };
+    const memoryOf = (index: number) => {
+      const row = rows[index];
+      if (!row || row.adopted) return null;
+      const memoryMb = [1250, 2500, 880, 0, 1730, 640, 1410, 2010, 990][index] ?? 1100;
+      const limitMb = index === 2 ? 1536 : 2048;
+      return { memoryMb, limitMb, over: memoryMb > limitMb, trimmedAtMs: memoryMb > limitMb ? started : null };
+    };
     setInvokeHandler((cmd, args) => {
       if (cmd === "get_running_instances") {
-        return rows.map((row) => ({
+        return rows.map((row, index) => ({
           pid: row.pid,
           user_id: row.userId,
           browser_tracker_id: `${row.userId}0001`,
           adopted: row.adopted,
+          memory: memoryOf(index),
           health: {
             pid: row.pid,
             logFound: true,

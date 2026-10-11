@@ -37,6 +37,12 @@ pub fn get_roblox_pids() -> Vec<u32> {
     find_pids_for_exes(&["RobloxPlayerBeta.exe"])
 }
 
+/// PIDs do Explorer: a área de trabalho é uma janela dele que cobre o monitor
+/// inteiro, e não é "tela cheia" para o Modo AFK esperar.
+pub fn get_shell_pids() -> Vec<u32> {
+    find_pids_for_exes(&["explorer.exe"])
+}
+
 pub fn find_roblox_pids_all() -> Vec<u32> {
     find_pids_for_exes(&[
         "RobloxPlayerBeta.exe",

@@ -35,6 +35,9 @@ struct PlatformCapabilities {
     /// Volume ao vivo por cliente: só no Windows e só com a feature
     /// `live-audio` no binário (nas duas edições, via `standard`).
     supports_live_audio: bool,
+    /// Teto de memória que libera RAM antes de fechar: só no Windows e só com
+    /// a feature `memory-trim` (nas duas edições).
+    supports_memory_trim: bool,
     reasons: Vec<String>,
     warnings: Vec<String>,
 }
@@ -73,6 +76,7 @@ fn build_platform_capabilities(
             supports_updater: true,
             supports_client_settings: true,
             supports_live_audio: cfg!(feature = "live-audio"),
+            supports_memory_trim: cfg!(feature = "memory-trim"),
             reasons: Vec::new(),
             warnings: Vec::new(),
         },
@@ -93,6 +97,7 @@ fn build_platform_capabilities(
             supports_updater: true,
             supports_client_settings: true,
             supports_live_audio: false,
+            supports_memory_trim: false,
             reasons: vec!["Auto Rejoin is only supported on Windows".to_string()],
             warnings: vec![
                 "macOS support is partial: no per-client memory watch, no window grid and no pre-launch isolation".to_string(),
@@ -114,6 +119,7 @@ fn build_platform_capabilities(
             supports_updater: true,
             supports_client_settings: false,
             supports_live_audio: false,
+            supports_memory_trim: false,
             reasons: vec!["Launching Roblox is only supported on Windows and macOS".to_string()],
             warnings: vec![
                 "Account management works, but launching, the watcher and Auto Rejoin are unavailable on this platform".to_string(),
@@ -178,6 +184,7 @@ mod platform_info_tests {
         "supportsUpdater",
         "supportsClientSettings",
         "supportsLiveAudio",
+        "supportsMemoryTrim",
         "reasons",
         "warnings",
     ];
@@ -212,6 +219,15 @@ mod platform_info_tests {
         }
         assert!(!build_platform_capabilities("macos", "desktop", "sober").supports_live_audio);
         assert!(!build_platform_capabilities("linux", "x11", "sober").supports_live_audio);
+    }
+
+    #[test]
+    fn the_memory_ceiling_follows_the_build_feature_and_is_windows_only() {
+        let windows = build_platform_capabilities("windows", "desktop", "sober");
+        assert_eq!(windows.supports_memory_trim, cfg!(feature = "memory-trim"));
+        // Só na edição completa: a padrão (`--features standard`) não leva.
+        assert!(!build_platform_capabilities("macos", "desktop", "sober").supports_memory_trim);
+        assert!(!build_platform_capabilities("linux", "x11", "sober").supports_memory_trim);
     }
 
     #[test]
