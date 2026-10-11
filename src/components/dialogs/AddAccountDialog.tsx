@@ -1,4 +1,4 @@
-import { File, FileText, Globe, KeyRound, Package, Plus, Sparkles, UserPlus, X } from "lucide-react";
+import { File, FileText, Globe, KeyRound, Package, Plus, Smartphone, Sparkles, UserPlus, X } from "lucide-react";
 import { useStore } from "../../store";
 import { usePrompt } from "../../hooks/usePrompt";
 import { useBackdropClose } from "../../hooks/useBackdropClose";
@@ -38,6 +38,11 @@ export function AddAccountDialog({ open, onClose }: AddAccountDialogProps) {
   async function handleBrowserLogin() {
     onClose();
     await store.openLoginBrowser();
+  }
+
+  function handleQuickLogin() {
+    onClose();
+    store.setQuickLoginOpen(true);
   }
 
   function handleUserPassLogin() {
@@ -126,6 +131,21 @@ export function AddAccountDialog({ open, onClose }: AddAccountDialogProps) {
             >
               <KeyRound size={15} strokeWidth={1.75} className="theme-muted" />
               {t("User:Pass Login")}
+            </button>
+
+            {/* Ideia 12: aprova um código num aparelho já logado — sem colar
+                cookie nem digitar senha aqui. Mesmo item no menu Add da toolbar. */}
+            <button
+              onClick={handleQuickLogin}
+              className="flex items-start gap-2.5 w-full px-3 py-2.5 text-sm text-[var(--panel-fg)] hover:bg-[var(--panel-soft)] text-left rounded-lg transition-colors"
+            >
+              <Smartphone size={15} strokeWidth={1.75} className="theme-muted mt-0.5 shrink-0" />
+              <span className="min-w-0">
+                {t("Quick Login")}
+                <span className="block text-[12px] theme-muted leading-snug">
+                  {t("Approve a code on a phone or PC already signed in")}
+                </span>
+              </span>
             </button>
 
             <div className="my-1 border-t border-zinc-800/70" />

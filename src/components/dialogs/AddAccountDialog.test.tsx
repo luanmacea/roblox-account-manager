@@ -225,6 +225,13 @@ describe("AddAccountDialog", () => {
     expect(store.openGeneratorDialog).toHaveBeenCalledWith(tab);
   });
 
+  it("opens Quick Login (approve a code on another device)", async () => {
+    const { store, onClose } = renderDialog();
+    await userEvent.click(screen.getByRole("button", { name: /^Quick Login/ }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(store.setQuickLoginOpen).toHaveBeenCalledWith(true);
+  });
+
   it("opens the versions dialog", async () => {
     const { store, onClose } = renderDialog();
     await userEvent.click(screen.getByRole("button", { name: "Roblox Versions" }));

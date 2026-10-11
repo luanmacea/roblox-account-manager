@@ -52,6 +52,7 @@ Três telas cobrem quase tudo: a **lista de contas** (principal), a **Choose Gam
 | `Quick Add` | Pede cookie **ou** nome de usuário. Com nome de usuário a conta entra **sem sessão** (a tela avisa e a linha fica marcada) — serve só de marcador até você colar o cookie. |
 | `Browser Login` | Abre um navegador embutido para você logar normalmente. É o caminho mais seguro. |
 | `User:Pass Login` | Cola `usuario:senha`, uma por linha; abre o navegador para concluir cada login. Linha `usuario:senha:cookie` entra direto pelo cookie, sem navegador nem CAPTCHA. |
+| `Quick Login` | Mostra um código de 6 caracteres; você o aprova em `roblox.com/crossdevicelogin` num celular ou PC **já logado** na conta e ela entra sozinha — sem colar cookie nem digitar senha no app. Se o Roblox pedir CAPTCHA nesse passo, o app avisa e manda usar o `Browser Login`. Também no diálogo Add Account. |
 | `Import Cookie` | Cola um `.ROBLOSECURITY` por linha — ou `usuario:senha:cookie`, que guarda a senha junto. O cookie sai do navegador em que você já está logado: DevTools › Application › Cookies › roblox.com. |
 | `Import Old Account Data` | Traz o `AccountData.json` da versão antiga do RAM. |
 | `Create Accounts` | Cria contas **de graça** no navegador embutido: o app preenche nome, senha, data e gênero; **você resolve o CAPTCHA**. O campo `Name prefix` padroniza os nomes do lote: `arvore` gera `arvore_k3p9z` (prefixo + 5 caracteres sorteados). |

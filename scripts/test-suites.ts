@@ -391,6 +391,9 @@ export const SUITES: Record<string, TestSuite> = {
       "src/hooks/useInactivityLock.test.ts",
       "src/components/layout/LockOverlay.test.tsx",
       "src/components/settings/inactivityLockSetting.test.tsx",
+      "src/components/dialogs/QuickLoginDialog.test.tsx",
+      "src/components/dialogs/AddAccountDialog.test.tsx",
+      "src/components/layout/Toolbar.test.tsx",
     ],
   },
   "hidden-names": {
@@ -467,6 +470,8 @@ export const SUITES: Record<string, TestSuite> = {
       "services_command_tests",
       "app_lock_command_tests",
       "app_lock_verify_tests",
+      "quick_login_add_tests",
+      "quick_login_command_tests",
     ],
     front: [
       "src/utils/diagnostics.test.ts",
@@ -479,6 +484,9 @@ export const SUITES: Record<string, TestSuite> = {
       "src/hooks/useInactivityLock.test.ts",
       "src/components/layout/LockOverlay.test.tsx",
       "src/components/settings/inactivityLockSetting.test.tsx",
+      "src/components/dialogs/QuickLoginDialog.test.tsx",
+      "src/components/dialogs/AddAccountDialog.test.tsx",
+      "src/components/layout/Toolbar.test.tsx",
     ],
   },
   performance: {

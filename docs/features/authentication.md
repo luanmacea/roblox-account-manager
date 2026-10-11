@@ -69,6 +69,20 @@ Fora do Windows não há DPAPI e a caixa nem aparece (`remembered_unlock_state.s
 
 Comandos: `unlock_accounts(password, rememberHours)`, `try_remembered_unlock()` (chamado na inicialização antes de mostrar a tela), `remembered_unlock_state()`, `forget_remembered_unlock()`.
 
+### Adicionar conta por Quick Login (ideia 12)
+
+O lado de **quem entra** do Quick Login oficial do Roblox (o lado de **aprovar** um código já existia: `quick_login_enter_code`/`quick_login_validate_code`, item "Quick Login" do menu de contexto). Código: [api/auth.rs](../../src-tauri/src/api/auth.rs) (`quick_login_create`, `quick_login_status`, `quick_login_redeem`) e [commands/quick_login.rs](../../src-tauri/src/commands/quick_login.rs); tela [QuickLoginDialog.tsx](../../src/components/dialogs/QuickLoginDialog.tsx), aberta pelo menu Add e pelo diálogo Add Account.
+
+1. `add_by_quick_login_start` → `POST apis/auth-token-service/v1/login/create` (`{}`; sem conta, com o aperto de mão do XSRF: 403 com `x-csrf-token`, repete uma vez). O Roblox devolve `code`, `privateKey` e `expirationTime`. A **chave privada fica no backend** (`PENDING_QUICK_LOGIN`); a tela recebe só o código.
+2. A tela mostra o código e manda a pessoa abrir `roblox.com/crossdevicelogin` (ou Configurações › Quick Log In no app) num aparelho **já logado na conta**, digitar e confirmar.
+3. A cada 3 s, `add_by_quick_login_poll` → `POST apis/auth-token-service/v1/login/status` (`code` + `privateKey`): `Created` = esperando, `UserLinked` = digitado (com o nome da conta), `Validated` = confirmado, `Cancelled`, e 400/`CodeInvalid` = vencido.
+4. Confirmado: `POST auth/v2/login` com `{ctype: "AuthToken", cvalue: code, password: privateKey}` devolve o `.ROBLOSECURITY` no `Set-Cookie`. Daí é o mesmo caminho do Quick Add: `validate_cookie` → `AccountStore::add` (conta já salva = cookie atualizado). O login acaba ali, dando certo ou não: o código é de uso único.
+5. Fechar a tela chama `add_by_quick_login_cancel`.
+
+**Se o Roblox pedir verificação** (`rblx-challenge-id`/`rblx-challenge-type`, como CAPTCHA) no passo 4, o app **para** com `QUICK_LOGIN_CHALLENGE_MESSAGE` ("…MultiAlt doesn't solve those. Add the account with Browser Login instead") — não tenta resolver nem contornar. O mesmo vale para qualquer resposta sem cookie. O fluxo foi conferido em dois projetos de terceiros (só leitura, nada executado) e testado com HTTP mockado; **ainda falta um teste do dono com uma conta real** — pode ser que o Roblox exija verificação nesse passo para algumas contas, e aí a mensagem acima é o resultado esperado.
+
+URLs sempre por `endpoints::host` (`quick_login_urls_come_from_endpoints` falha com literal `https://*.roblox.com`).
+
 ### Auth ticket — `get_auth_ticket`
 
 1. Obtém CSRF.

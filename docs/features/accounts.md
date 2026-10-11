@@ -109,6 +109,7 @@ Morrer entre 1 e 2, ou entre 2 e 3, deixa o vault **em texto puro e inteiro**; a
 |---|---|
 | Cookie (Quick Add / Import Cookie / drag & drop de texto) | `validate_cookie(cookie)` → `add_account(securityToken, username, userId)` |
 | `username:password:cookie` em lote (mesma caixa do Import Cookie, e também aceito na aba User:Pass e no Quick Add) | `parseImportLine` ([utils/cookies.ts](../../src/utils/cookies.ts)) → `validate_cookie(cookie)` → `add_account(..., password)` — sem navegador, porque a sessão já veio na linha |
+| Quick Login (menu Add / Add Account) | código aprovado num aparelho já logado → `add_by_quick_login_poll` troca pela sessão → `validate_cookie` → `AccountStore::add`, no backend (o cookie nem passa pelo frontend). Ver [authentication.md](authentication.md#adicionar-conta-por-quick-login-ideia-12). |
 | Username (Quick Add sem cookie) | `lookup_user(username)` → `add_account` com `securityToken: ""` (conta sem sessão) |
 | Login no navegador | `open_login_browser` abre Chromium via CDP; ao detectar o cookie emite `browser-login-detected`; a store chama `extract_browser_cookie` (até 8 tentativas, 350 ms) → `addAccountByCookie` → `close_login_browser`. |
 | user:pass em lote | uma linha `usuario:senha` por vez → `import_userpass`: abre o login, preenche `#login-username`, espera até ~240 s (480 × 500 ms) pelo cookie, valida e salva com `Password` preenchida. |

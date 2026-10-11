@@ -194,6 +194,13 @@ describe("Toolbar — Add menu", () => {
     expect(generator).toHaveTextContent(/BloxGen/);
   });
 
+  it("offers Quick Login in the Add menu too", async () => {
+    const store = renderToolbar();
+    await openAddMenu();
+    await userEvent.click(screen.getByRole("button", { name: "Quick Login" }));
+    expect(store.setQuickLoginOpen).toHaveBeenCalledWith(true);
+  });
+
   it("opens the versions dialog", async () => {
     const store = renderToolbar();
     await openAddMenu();

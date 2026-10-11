@@ -541,6 +541,338 @@ pub async fn quick_login_validate_code(security_token: &str, code: &str) -> Resu
     }
 }
 
+// ── Quick Login do lado de quem **entra** (ideia 12) ────────────────────────
+//
+// O fluxo oficial do Roblox para entrar num aparelho novo sem digitar senha:
+// 1. `auth-token-service/v1/login/create` devolve um código curto e uma chave
+//    privada (a chave nunca sai do backend);
+// 2. a pessoa digita o código num aparelho já logado (roblox.com/crossdevicelogin
+//    ou Configurações › Quick Log In) e confirma;
+// 3. `login/status` passa de `Created` para `UserLinked` e depois `Validated`;
+// 4. `auth.roblox.com/v2/login` com `ctype: AuthToken` troca código + chave pela
+//    sessão (`.ROBLOSECURITY` no `Set-Cookie`).
+//
+// Se o Roblox pedir verificação (captcha ou outro desafio) no passo 4, o app
+// **para** com uma mensagem — não tenta resolver nem contornar o desafio.
+
+/// Um Quick Login em andamento. A chave privada fica só aqui.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct QuickLoginSession {
+    pub code: String,
+    pub private_key: String,
+    pub expires_at: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum QuickLoginStatus {
+    /// Esperando o código ser digitado no outro aparelho.
+    Pending,
+    /// Código digitado; esperando a confirmação lá.
+    #[serde(rename_all = "camelCase")]
+    Linked { account_name: Option<String> },
+    /// Confirmado: já dá para trocar pela sessão.
+    Validated,
+    Cancelled,
+    Expired,
+}
+
+/// Mensagem de quando o Roblox pede verificação para concluir o Quick Login.
+pub const QUICK_LOGIN_CHALLENGE_MESSAGE: &str =
+    "Roblox asked for an extra check (like a CAPTCHA) to finish this sign-in, and MultiAlt doesn't solve those. Add the account with Browser Login instead.";
+
+/// POST sem conta que precisa de XSRF: a primeira resposta é 403 com o token
+/// no `x-csrf-token`, e o pedido é repetido uma vez com ele.
+async fn post_with_csrf_handshake(
+    url: String,
+    body: &serde_json::Value,
+) -> Result<reqwest::Response, String> {
+    let client = build_client();
+    let first = client
+        .post(&url)
+        .json(body)
+        .send_noting()
+        .await
+        .map_err(|e| http_client::describe_error(&e))?;
+    if first.status() != reqwest::StatusCode::FORBIDDEN {
+        return Ok(first);
+    }
+    let Some(token) = first
+        .headers()
+        .get("x-csrf-token")
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+    else {
+        return Ok(first);
+    };
+    client
+        .post(&url)
+        .header("X-CSRF-TOKEN", token)
+        .json(body)
+        .send_noting()
+        .await
+        .map_err(|e| http_client::describe_error(&e))
+}
+
+pub async fn quick_login_create() -> Result<QuickLoginSession, String> {
+    let response = post_with_csrf_handshake(
+        format!("{}/auth-token-service/v1/login/create", endpoints::host("apis")),
+        &serde_json::json!({}),
+    )
+    .await?;
+    let status = response.status();
+    let body = response.text().await.unwrap_or_default();
+    if !status.is_success() {
+        return Err(format!(
+            "Roblox couldn't start Quick Login (status {}).",
+            status.as_u16()
+        ));
+    }
+    parse_quick_login_session(&body)
+}
+
+fn parse_quick_login_session(body: &str) -> Result<QuickLoginSession, String> {
+    let value: serde_json::Value =
+        serde_json::from_str(body).map_err(|_| "Unexpected Quick Login answer from Roblox.".to_string())?;
+    let text = |key: &str| {
+        value
+            .get(key)
+            .and_then(|v| v.as_str())
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(str::to_string)
+    };
+    match (text("code"), text("privateKey")) {
+        (Some(code), Some(private_key)) => Ok(QuickLoginSession {
+            code,
+            private_key,
+            expires_at: text("expirationTime"),
+        }),
+        _ => Err("Unexpected Quick Login answer from Roblox.".to_string()),
+    }
+}
+
+/// O que a resposta do `login/status` quer dizer. 400 é código inválido ou
+/// vencido (o Roblox responde `CodeInvalid`); estado desconhecido conta como
+/// "ainda esperando".
+fn parse_quick_login_status(status: u16, body: &str) -> Result<QuickLoginStatus, String> {
+    if status == 400 {
+        return Ok(QuickLoginStatus::Expired);
+    }
+    if !(200..300).contains(&status) {
+        return Err(format!("Roblox returned status {status} while checking Quick Login."));
+    }
+    let value: serde_json::Value = serde_json::from_str(body).unwrap_or_default();
+    let field = |key: &str| value.get(key).and_then(|v| v.as_str()).map(str::to_string);
+    Ok(match field("status").as_deref() {
+        Some("Validated") => QuickLoginStatus::Validated,
+        Some("UserLinked") => QuickLoginStatus::Linked {
+            account_name: field("accountName").filter(|s| !s.trim().is_empty()),
+        },
+        Some("Cancelled") => QuickLoginStatus::Cancelled,
+        Some("CodeInvalid") | Some("Expired") => QuickLoginStatus::Expired,
+        _ => QuickLoginStatus::Pending,
+    })
+}
+
+pub async fn quick_login_status(session: &QuickLoginSession) -> Result<QuickLoginStatus, String> {
+    let response = post_with_csrf_handshake(
+        format!("{}/auth-token-service/v1/login/status", endpoints::host("apis")),
+        &serde_json::json!({ "code": session.code, "privateKey": session.private_key }),
+    )
+    .await?;
+    let status = response.status().as_u16();
+    let body = response.text().await.unwrap_or_default();
+    parse_quick_login_status(status, &body)
+}
+
+/// O `.ROBLOSECURITY` de um `Set-Cookie`, se houver.
+fn roblosecurity_from_headers(headers: &reqwest::header::HeaderMap) -> Option<String> {
+    headers
+        .get_all("set-cookie")
+        .iter()
+        .filter_map(|v| v.to_str().ok())
+        .find_map(|cookie| {
+            cookie
+                .strip_prefix(".ROBLOSECURITY=")
+                .map(|rest| rest.split(';').next().unwrap_or_default().to_string())
+        })
+        .filter(|token| !token.is_empty())
+}
+
+/// Troca um Quick Login confirmado pela sessão da conta.
+pub async fn quick_login_redeem(session: &QuickLoginSession) -> Result<String, String> {
+    let response = post_with_csrf_handshake(
+        format!("{}/v2/login", endpoints::host("auth")),
+        &serde_json::json!({
+            "ctype": "AuthToken",
+            "cvalue": session.code,
+            "password": session.private_key,
+        }),
+    )
+    .await?;
+    if let Some(token) = roblosecurity_from_headers(response.headers()) {
+        return Ok(token);
+    }
+    if challenge_message(response.headers()).is_some() {
+        return Err(QUICK_LOGIN_CHALLENGE_MESSAGE.to_string());
+    }
+    Err(format!(
+        "Roblox didn't finish the sign-in (status {}). Try again with a new code, or use Browser Login.",
+        response.status().as_u16()
+    ))
+}
+
+#[cfg(test)]
+mod quick_login_add_tests {
+    use super::*;
+    use crate::api::endpoints::test_support::{mock_path, mock_server};
+    use wiremock::matchers::{body_partial_json, header, method, path};
+    use wiremock::{Mock, Request, ResponseTemplate};
+
+    #[test]
+    fn a_created_session_needs_both_code_and_private_key() {
+        let ok = parse_quick_login_session(
+            r#"{"code":"ABC123","status":"Created","privateKey":"pk-1","expirationTime":"2026-10-11T10:00:00Z"}"#,
+        )
+        .unwrap();
+        assert_eq!(ok.code, "ABC123");
+        assert_eq!(ok.private_key, "pk-1");
+        assert_eq!(ok.expires_at.as_deref(), Some("2026-10-11T10:00:00Z"));
+        assert!(parse_quick_login_session(r#"{"code":"ABC123"}"#).is_err());
+        assert!(parse_quick_login_session(r#"{"privateKey":"x"}"#).is_err());
+        assert!(parse_quick_login_session("not json").is_err());
+    }
+
+    #[test]
+    fn the_status_maps_every_roblox_state() {
+        assert_eq!(parse_quick_login_status(200, r#"{"status":"Created"}"#), Ok(QuickLoginStatus::Pending));
+        assert_eq!(
+            parse_quick_login_status(200, r#"{"status":"UserLinked","accountName":"Someone"}"#),
+            Ok(QuickLoginStatus::Linked { account_name: Some("Someone".into()) })
+        );
+        assert_eq!(
+            parse_quick_login_status(200, r#"{"status":"UserLinked","accountName":""}"#),
+            Ok(QuickLoginStatus::Linked { account_name: None })
+        );
+        assert_eq!(parse_quick_login_status(200, r#"{"status":"Validated"}"#), Ok(QuickLoginStatus::Validated));
+        assert_eq!(parse_quick_login_status(200, r#"{"status":"Cancelled"}"#), Ok(QuickLoginStatus::Cancelled));
+        assert_eq!(parse_quick_login_status(400, r#""CodeInvalid""#), Ok(QuickLoginStatus::Expired));
+        assert_eq!(parse_quick_login_status(200, "{}"), Ok(QuickLoginStatus::Pending));
+        assert!(parse_quick_login_status(500, "").is_err());
+    }
+
+    #[test]
+    fn the_status_serializes_with_a_kind_tag_for_the_ui() {
+        let json = serde_json::to_value(QuickLoginStatus::Linked { account_name: Some("A".into()) }).unwrap();
+        assert_eq!(json["kind"], "linked");
+        assert_eq!(json["accountName"], "A");
+        assert_eq!(serde_json::to_value(QuickLoginStatus::Expired).unwrap()["kind"], "expired");
+    }
+
+    #[tokio::test]
+    async fn create_does_the_csrf_handshake_and_returns_the_code() {
+        let server = mock_server().await;
+        Mock::given(method("POST"))
+            .and(path(mock_path("apis", "/auth-token-service/v1/login/create")))
+            .and(|req: &Request| !req.headers.contains_key("x-csrf-token"))
+            .respond_with(ResponseTemplate::new(403).insert_header("x-csrf-token", "ql-create-csrf"))
+            .mount(server)
+            .await;
+        Mock::given(method("POST"))
+            .and(path(mock_path("apis", "/auth-token-service/v1/login/create")))
+            .and(header("x-csrf-token", "ql-create-csrf"))
+            .respond_with(ResponseTemplate::new(200).set_body_string(
+                r#"{"code":"QWE789","status":"Created","privateKey":"pk-create"}"#,
+            ))
+            .mount(server)
+            .await;
+
+        let session = quick_login_create().await.expect("session");
+        assert_eq!(session.code, "QWE789");
+        assert_eq!(session.private_key, "pk-create");
+    }
+
+    #[tokio::test]
+    async fn status_sends_code_and_private_key() {
+        let server = mock_server().await;
+        Mock::given(method("POST"))
+            .and(path(mock_path("apis", "/auth-token-service/v1/login/status")))
+            .and(body_partial_json(serde_json::json!({ "code": "ST0001", "privateKey": "pk-status" })))
+            .respond_with(ResponseTemplate::new(200).set_body_string(r#"{"status":"Validated"}"#))
+            .mount(server)
+            .await;
+        let session = QuickLoginSession {
+            code: "ST0001".into(),
+            private_key: "pk-status".into(),
+            expires_at: None,
+        };
+        assert_eq!(quick_login_status(&session).await, Ok(QuickLoginStatus::Validated));
+    }
+
+    #[tokio::test]
+    async fn redeem_returns_the_session_cookie() {
+        let server = mock_server().await;
+        Mock::given(method("POST"))
+            .and(path(mock_path("auth", "/v2/login")))
+            .and(body_partial_json(serde_json::json!({
+                "ctype": "AuthToken",
+                "cvalue": "RD0001",
+                "password": "pk-redeem"
+            })))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .insert_header("set-cookie", ".ROBLOSECURITY=_|WARNING|_ql-cookie; domain=.roblox.com; path=/"),
+            )
+            .mount(server)
+            .await;
+        let session = QuickLoginSession {
+            code: "RD0001".into(),
+            private_key: "pk-redeem".into(),
+            expires_at: None,
+        };
+        assert_eq!(quick_login_redeem(&session).await, Ok("_|WARNING|_ql-cookie".into()));
+    }
+
+    #[tokio::test]
+    async fn a_challenge_stops_with_a_clear_message_instead_of_being_solved() {
+        let server = mock_server().await;
+        Mock::given(method("POST"))
+            .and(path(mock_path("auth", "/v2/login")))
+            .and(body_partial_json(serde_json::json!({ "cvalue": "CH0001" })))
+            .respond_with(
+                ResponseTemplate::new(403)
+                    .insert_header("rblx-challenge-id", "abc")
+                    .insert_header("rblx-challenge-type", "captcha"),
+            )
+            .mount(server)
+            .await;
+        let session = QuickLoginSession {
+            code: "CH0001".into(),
+            private_key: "pk-challenge".into(),
+            expires_at: None,
+        };
+        assert_eq!(
+            quick_login_redeem(&session).await,
+            Err(QUICK_LOGIN_CHALLENGE_MESSAGE.to_string())
+        );
+    }
+
+    #[test]
+    fn quick_login_urls_come_from_endpoints() {
+        // Literal `https://*.roblox.com` aqui quebraria os testes mockados.
+        let source = include_str!("auth.rs");
+        let section = source
+            .split("// ── Quick Login do lado de quem **entra**")
+            .nth(1)
+            .and_then(|s| s.split("#[cfg(test)]").next())
+            .expect("section");
+        assert!(!section.contains("https://apis.roblox.com"));
+        assert!(!section.contains("https://auth.roblox.com"));
+    }
+}
+
 pub async fn set_display_name(
     security_token: &str,
     user_id: i64,

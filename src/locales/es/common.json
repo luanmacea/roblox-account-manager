@@ -2335,5 +2335,19 @@
   "Needs an app password. Set one with Change Encryption Method above.": "Necesita una contraseña de la app. Pon una con Change Encryption Method, arriba.",
   "Shows the password screen after the minutes below without using the MultiAlt window. Launches, AFK Mode and reconnects keep running.": "Muestra la pantalla de contraseña tras los minutos de abajo sin usar la ventana de MultiAlt. Los lanzamientos, el Modo AFK y las reconexiones siguen funcionando.",
   "Too many wrong passwords. Wait {{seconds}} seconds and try again.": "Demasiadas contraseñas incorrectas. Espera {{seconds}} segundos y vuelve a intentarlo.",
-  "Wrong password.": "Contraseña incorrecta."
+  "Wrong password.": "Contraseña incorrecta.",
+  "Add with Quick Login": "Añadir con Quick Login",
+  "Approve a code on a phone or PC already signed in": "Aprueba un código en un móvil o PC con la sesión ya iniciada",
+  "Asking Roblox for a code...": "Pidiendo un código a Roblox...",
+  "Code entered for {{name}}. Confirm it on the other device.": "Código introducido para {{name}}. Confírmalo en el otro dispositivo.",
+  "Code entered. Confirm it on the other device.": "Código introducido. Confírmalo en el otro dispositivo.",
+  "Get a new code": "Obtener otro código",
+  "Keep this window open: the account is added by itself.": "Deja esta ventana abierta: la cuenta se añade sola.",
+  "No password or cookie is typed here. Only approve a code you see in this window.": "Aquí no se escribe ninguna contraseña ni cookie. Aprueba solo un código que estés viendo en esta ventana.",
+  "On a phone or computer already signed in to the account, open roblox.com/crossdevicelogin (in the Roblox app: Settings › Quick Log In).": "En un móvil o computadora con la sesión de la cuenta iniciada, abre roblox.com/crossdevicelogin (en la app de Roblox: Configuración › Quick Log In).",
+  "The sign-in was cancelled on the other device.": "El inicio de sesión se canceló en el otro dispositivo.",
+  "This code expired before it was approved.": "Este código caducó antes de ser aprobado.",
+  "Type the code above and confirm.": "Escribe el código de arriba y confirma.",
+  "Waiting for the code...": "Esperando el código...",
+  "Your code": "Tu código"
 }

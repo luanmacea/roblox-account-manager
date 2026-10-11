@@ -6,7 +6,7 @@ import { tr, useTr } from "../../i18n/text";
 import { quickAddAccount } from "../../utils/quickAdd";
 import { ENABLE_ACCOUNT_GENERATOR } from "../../featureFlags";
 import { TourButton } from "../tour/TourButton";
-import { Search, X, SquareX, SquareCheckBig, PanelRight, Plus, ChevronDown, Globe, KeyRound, File, FileText, Sparkles, Package, UserPlus, Bookmark } from "lucide-react";
+import { Search, X, SquareX, SquareCheckBig, PanelRight, Plus, ChevronDown, Globe, KeyRound, File, FileText, Sparkles, Package, UserPlus, Bookmark, Smartphone } from "lucide-react";
 
 /**
  * Barra de cima da página de contas: filtro, selecionar tudo, nomes, painel
@@ -63,6 +63,11 @@ export function Toolbar() {
   function handleBrowserLogin() {
     setAddMenuOpen(false);
     store.openLoginBrowser();
+  }
+
+  function handleQuickLogin() {
+    setAddMenuOpen(false);
+    store.setQuickLoginOpen(true);
   }
 
   function handleUserPassLogin() {
@@ -245,6 +250,14 @@ export function Toolbar() {
               >
                 <KeyRound size={14} strokeWidth={1.5} className="theme-muted" />
                 {t("User:Pass Login")}
+              </button>
+              {/* Ideia 12 — mesmo item do AddAccountDialog. */}
+              <button
+                onClick={handleQuickLogin}
+                className="flex items-center gap-2.5 w-full px-3.5 py-2 text-sm text-[var(--panel-fg)] hover:bg-[var(--panel-soft)] text-left"
+              >
+                <Smartphone size={14} strokeWidth={1.5} className="theme-muted" />
+                {t("Quick Login")}
               </button>
               <div className="my-1 border-t theme-border" />
               <button

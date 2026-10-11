@@ -693,6 +693,9 @@ export interface StoreValue {
   /** Checagem "o launch não faz nada" (ideia 16) — Settings e a faixa de erro. */
   diagnosticsOpen: boolean;
   setDiagnosticsOpen: (open: boolean) => void;
+  /** Adicionar conta por Quick Login (ideia 12) — menu Add e AddAccountDialog. */
+  quickLoginOpen: boolean;
+  setQuickLoginOpen: (open: boolean) => void;
   /** Abre (ou fecha) o Modo AFK na aba de cliques AFK — o atalho da barra. */
   setAfkDialogOpen: (open: boolean) => void;
   setAvatarsDialogOpen: (open: boolean) => void;
@@ -922,6 +925,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [generatorStatus, setGeneratorStatus] = useState<GeneratorStatus | null>(null);
   const [versionsDialogOpen, setVersionsDialogOpen] = useState(false);
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
+  const [quickLoginOpen, setQuickLoginOpen] = useState(false);
   const [presetsDialog, setPresetsDialog] = useState<{ draft: LaunchPreset | null } | null>(null);
   const [presetsRevision, setPresetsRevision] = useState(0);
   const openPresetsDialog = useCallback((draft?: LaunchPreset | null) => {
@@ -3594,6 +3598,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setVersionsDialogOpen,
     diagnosticsOpen,
     setDiagnosticsOpen,
+    quickLoginOpen,
+    setQuickLoginOpen,
     setSessionDialogOpen,
     setDefaultVersion,
     missingAssets,

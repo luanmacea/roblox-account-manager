@@ -2335,5 +2335,19 @@
   "Needs an app password. Set one with Change Encryption Method above.": "Precisa de uma senha do app. Defina uma em Change Encryption Method, acima.",
   "Shows the password screen after the minutes below without using the MultiAlt window. Launches, AFK Mode and reconnects keep running.": "Mostra a tela de senha depois dos minutos abaixo sem usar a janela do MultiAlt. Launches, Modo AFK e reconexões continuam rodando.",
   "Too many wrong passwords. Wait {{seconds}} seconds and try again.": "Muitas senhas erradas. Espere {{seconds}} segundos e tente de novo.",
-  "Wrong password.": "Senha errada."
+  "Wrong password.": "Senha errada.",
+  "Add with Quick Login": "Adicionar com Quick Login",
+  "Approve a code on a phone or PC already signed in": "Aprove um código num celular ou PC já logado",
+  "Asking Roblox for a code...": "Pedindo um código ao Roblox...",
+  "Code entered for {{name}}. Confirm it on the other device.": "Código digitado para {{name}}. Confirme no outro aparelho.",
+  "Code entered. Confirm it on the other device.": "Código digitado. Confirme no outro aparelho.",
+  "Get a new code": "Pegar outro código",
+  "Keep this window open: the account is added by itself.": "Deixe esta janela aberta: a conta entra sozinha.",
+  "No password or cookie is typed here. Only approve a code you see in this window.": "Nenhuma senha ou cookie é digitado aqui. Só aprove um código que você está vendo nesta janela.",
+  "On a phone or computer already signed in to the account, open roblox.com/crossdevicelogin (in the Roblox app: Settings › Quick Log In).": "Num celular ou computador já logado na conta, abra roblox.com/crossdevicelogin (no app do Roblox: Configurações › Quick Log In).",
+  "The sign-in was cancelled on the other device.": "O login foi cancelado no outro aparelho.",
+  "This code expired before it was approved.": "Este código venceu antes de ser aprovado.",
+  "Type the code above and confirm.": "Digite o código acima e confirme.",
+  "Waiting for the code...": "Esperando o código...",
+  "Your code": "Seu código"
 }

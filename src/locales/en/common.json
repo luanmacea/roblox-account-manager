@@ -2335,5 +2335,19 @@
   "Needs an app password. Set one with Change Encryption Method above.": "Needs an app password. Set one with Change Encryption Method above.",
   "Shows the password screen after the minutes below without using the MultiAlt window. Launches, AFK Mode and reconnects keep running.": "Shows the password screen after the minutes below without using the MultiAlt window. Launches, AFK Mode and reconnects keep running.",
   "Too many wrong passwords. Wait {{seconds}} seconds and try again.": "Too many wrong passwords. Wait {{seconds}} seconds and try again.",
-  "Wrong password.": "Wrong password."
+  "Wrong password.": "Wrong password.",
+  "Add with Quick Login": "Add with Quick Login",
+  "Approve a code on a phone or PC already signed in": "Approve a code on a phone or PC already signed in",
+  "Asking Roblox for a code...": "Asking Roblox for a code...",
+  "Code entered for {{name}}. Confirm it on the other device.": "Code entered for {{name}}. Confirm it on the other device.",
+  "Code entered. Confirm it on the other device.": "Code entered. Confirm it on the other device.",
+  "Get a new code": "Get a new code",
+  "Keep this window open: the account is added by itself.": "Keep this window open: the account is added by itself.",
+  "No password or cookie is typed here. Only approve a code you see in this window.": "No password or cookie is typed here. Only approve a code you see in this window.",
+  "On a phone or computer already signed in to the account, open roblox.com/crossdevicelogin (in the Roblox app: Settings › Quick Log In).": "On a phone or computer already signed in to the account, open roblox.com/crossdevicelogin (in the Roblox app: Settings › Quick Log In).",
+  "The sign-in was cancelled on the other device.": "The sign-in was cancelled on the other device.",
+  "This code expired before it was approved.": "This code expired before it was approved.",
+  "Type the code above and confirm.": "Type the code above and confirm.",
+  "Waiting for the code...": "Waiting for the code...",
+  "Your code": "Your code"
 }

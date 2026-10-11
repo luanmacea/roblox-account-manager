@@ -340,6 +340,8 @@ export function createStoreValue(overrides: Partial<StoreValue> = {}): StoreValu
     versionsDialogOpen: false,
     setVersionsDialogOpen: vi.fn(),
     diagnosticsOpen: false,
+    quickLoginOpen: false,
+    setQuickLoginOpen: vi.fn(),
     appLocked: false,
     lockApp: vi.fn(),
     unlockApp: vi.fn(async () => null),

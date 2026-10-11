@@ -6,6 +6,7 @@ Ajudar quem relata "clico e nada acontece" sem precisar de conversa longa:
 
 - **Checagem "o launch não faz nada"** (ideia 16 de [ideias-de-outros-gerenciadores.md](../ideias-de-outros-gerenciadores.md)): uma lista do que costuma travar um launch, cada linha com OK/aviso/problema e uma frase do que fazer.
 - **Trancar por inatividade** (ideia 27): documentado em [accounts.md](accounts.md#trancar-por-inatividade-ideia-27).
+- **Adicionar conta por Quick Login** (ideia 12): documentado em [authentication.md](authentication.md#adicionar-conta-por-quick-login-ideia-12).
 - **Reportar problema com resumo anonimizado** (ideia 28): o "Send feedback" › "Report a problem" pode levar versão, edição, sistema, a checagem e as últimas linhas do Console, sem nada que identifique a pessoa ou as contas.
 
 ## Onde fica o código

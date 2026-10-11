@@ -59,6 +59,7 @@ include!("commands/moderation.rs");
 include!("commands/account_check.rs");
 include!("commands/reconnect.rs");
 include!("commands/keep_awake.rs");
+include!("commands/quick_login.rs");
 
 /// O que o app desfaz do Multi Roblox quando fecha.
 #[derive(Debug, PartialEq, Eq)]
@@ -515,6 +516,9 @@ pub fn run() {
             set_display_name,
             quick_login_enter_code,
             quick_login_validate_code,
+            add_by_quick_login_start,
+            add_by_quick_login_poll,
+            add_by_quick_login_cancel,
             batched_get_image,
             batched_get_avatar_headshots,
             batched_get_game_icon,

@@ -196,6 +196,13 @@ const baseHandler: InvokeHandler = (cmd, args) => {
       return null;
     // Checagem "o launch não faz nada" (ideia 16): um aviso para a tela ter o
     // que mostrar; a ordem é a do backend.
+    // Adicionar por Quick Login (ideia 12): o código fica esperando aprovação.
+    case "add_by_quick_login_start":
+      return { code: "HAR123", expiresAt: null };
+    case "add_by_quick_login_poll":
+      return { kind: "pending" };
+    case "add_by_quick_login_cancel":
+      return null;
     // Tela trancada por inatividade (ideia 27): qualquer senha não vazia.
     case "verify_app_password":
       if (!String(args?.password ?? "")) throw "Wrong password.";

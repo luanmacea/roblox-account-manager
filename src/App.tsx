@@ -32,6 +32,7 @@ import { AfkModeDialog } from "./components/afk-mode/AfkModeDialog";
 import { GeneratorDialog } from "./components/dialogs/GeneratorDialog";
 import { VersionsDialog } from "./components/dialogs/VersionsDialog";
 import { DiagnosticsDialog } from "./components/dialogs/DiagnosticsDialog";
+import { QuickLoginDialog } from "./components/dialogs/QuickLoginDialog";
 import { PresetsDialog } from "./components/presets/PresetsDialog";
 import { IsolationProgressOverlay } from "./components/IsolationProgressOverlay";
 import { SessionPage } from "./components/pages/SessionPage";
@@ -73,6 +74,7 @@ function AppContent() {
     store.generatorDialogOpen ||
     store.updateDialogOpen ||
     store.diagnosticsOpen ||
+    store.quickLoginOpen ||
     store.presetsDialog !== null ||
     store.firstRunWalkthroughOpen ||
     !!store.modal;
@@ -324,6 +326,8 @@ function AppContent() {
       />
 
       <DiagnosticsDialog open={store.diagnosticsOpen} onClose={() => store.setDiagnosticsOpen(false)} />
+
+      <QuickLoginDialog open={store.quickLoginOpen} onClose={() => store.setQuickLoginOpen(false)} />
 
       <PresetsDialog />
 
