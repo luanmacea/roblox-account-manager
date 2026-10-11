@@ -163,7 +163,19 @@ pub struct Recording {
     pub created_at: i64,
     #[serde(default)]
     pub updated_at: i64,
+    /// Proporção (largura ÷ altura) da área interna da janela em que a
+    /// gravação foi feita — vem da importação do TinyTask. Os cliques são
+    /// porcentagens da janela, então tocar numa janela de outro formato
+    /// desloca o ponto: a tela avisa quando a da conta difere mais de 5%.
+    /// Ausente em gravação escrita à mão (campo novo com padrão seguro, sem
+    /// subir a versão do arquivo).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_aspect: Option<f64>,
 }
+
+/// Proporção aceita: de uma janela 5x mais alta que larga até 5x mais larga.
+pub const MIN_SOURCE_ASPECT: f64 = 0.2;
+pub const MAX_SOURCE_ASPECT: f64 = 5.0;
 
 fn current_file_version() -> u32 {
     RECORDINGS_FILE_VERSION
@@ -265,6 +277,11 @@ pub fn normalize_recording(mut recording: Recording) -> Result<Recording, String
     if recording_duration_ms(&recording.steps) > MAX_RECORDING_TOTAL_MS {
         return Err("A recording can take up to 10 minutes.".into());
     }
+    // Proporção fora do que uma janela tem (arquivo editado à mão): some, em
+    // vez de recusar a gravação inteira.
+    recording.source_aspect = recording
+        .source_aspect
+        .filter(|a| a.is_finite() && (MIN_SOURCE_ASPECT..=MAX_SOURCE_ASPECT).contains(a));
     Ok(recording)
 }
 
@@ -432,6 +449,7 @@ impl RecordingStore {
                 steps: source.steps,
                 created_at: 0,
                 updated_at: 0,
+                source_aspect: source.source_aspect,
             },
             now_ms,
         )
@@ -622,6 +640,35 @@ mod recordings_store_tests {
         assert_eq!(copy.steps, first.steps);
         assert_eq!(store.load().unwrap().recordings.len(), 2);
         assert!(store.duplicate("nope", "X", 6).is_err());
+    }
+
+    /// A proporção da janela de origem (importação do TinyTask) é guardada,
+    /// passa para a cópia e não aparece no JSON de gravação escrita à mão.
+    #[test]
+    fn the_source_window_aspect_is_kept_copied_and_optional() {
+        let dir = TempDir::new();
+        let store = RecordingStore::new(dir.file());
+        let plain = store.upsert(recording("Hand made"), 1).unwrap();
+        assert_eq!(plain.source_aspect, None);
+        let mut imported = recording("Imported");
+        imported.source_aspect = Some(1.7778);
+        let saved = store.upsert(imported, 2).unwrap();
+        assert_eq!(saved.source_aspect, Some(1.7778));
+        let copy = store.duplicate(&saved.id, "Imported (copy)", 3).unwrap();
+        assert_eq!(copy.source_aspect, Some(1.7778));
+
+        let raw: serde_json::Value = serde_json::from_slice(&fs::read(dir.file()).unwrap()).unwrap();
+        assert!(raw["recordings"][0].get("sourceAspect").is_none());
+        assert_eq!(raw["recordings"][1]["sourceAspect"], 1.7778);
+    }
+
+    #[test]
+    fn an_impossible_source_aspect_is_dropped_not_refused() {
+        for bad in [0.0, -1.0, 50.0, f64::NAN, f64::INFINITY] {
+            let mut r = recording("A");
+            r.source_aspect = Some(bad);
+            assert_eq!(normalize_recording(r).unwrap().source_aspect, None, "{bad}");
+        }
     }
 
     #[test]

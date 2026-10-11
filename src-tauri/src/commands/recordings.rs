@@ -540,6 +540,37 @@ async fn play_recording_now(
     Ok(recording_play_results(&outcome))
 }
 
+/// "Test on one account": toca o rascunho do editor (ainda não salvo — o que
+/// acabou de vir do TinyTask) numa conta só, pelo mesmo ciclo. Valida como o
+/// salvar valida; nada é gravado no arquivo.
+#[cfg(target_os = "windows")]
+#[tauri::command]
+async fn play_recording_draft(
+    app: tauri::AppHandle,
+    user_id: i64,
+    recording: Recording,
+) -> Result<Vec<RecordingPlayResult>, String> {
+    let recording = draft_for_test(recording)?;
+    let plans = recording_plans_with(&recording, &[user_id]);
+    let outcome = run_recording_playback(&app, plans, vec![user_id]).await;
+    Ok(recording_play_results(&outcome))
+}
+
+#[cfg(not(target_os = "windows"))]
+#[tauri::command]
+async fn play_recording_draft(_user_id: i64, _recording: Recording) -> Result<Vec<RecordingPlayResult>, String> {
+    Err("Recordings are only available on Windows".into())
+}
+
+/// O rascunho que o teste toca: as mesmas regras do salvar (lista de teclas,
+/// limites), com um nome qualquer se o campo estiver vazio — o nome não toca.
+fn draft_for_test(mut recording: Recording) -> Result<Recording, String> {
+    if recording.name.trim().is_empty() {
+        recording.name = "Draft".into();
+    }
+    data::recordings::normalize_recording(recording)
+}
+
 #[cfg(not(target_os = "windows"))]
 #[tauri::command]
 async fn play_recording_now(
@@ -657,9 +688,72 @@ fn set_account_recording(
     Ok(())
 }
 
+/// Importa um `.rec` do TinyTask: os bytes do arquivo que a pessoa escolheu
+/// (a tela lê com `<input type="file">`) e a área da janela de referência.
+/// Só converte — não salva nada: a tela abre o rascunho no editor. O erro é um
+/// código (`empty`, `tooLarge`, `notTinyTask`). Ver data/tinytask.rs.
+#[tauri::command]
+fn import_tinytask_recording(
+    bytes: Vec<u8>,
+    area: data::tinytask::TinyTaskArea,
+) -> Result<data::tinytask::TinyTaskImport, String> {
+    data::tinytask::import_tinytask(&bytes, area).map_err(|e| e.code().to_string())
+}
+
+/// A área interna da janela do cliente da conta agora, em pixels de tela — a
+/// referência da importação ("onde estava a janela quando gravei"). Só lê o
+/// retângulo da janela; não mexe nela. Erro `noWindow` sem cliente aberto.
+#[cfg(target_os = "windows")]
+#[tauri::command]
+fn recording_window_area(user_id: i64) -> Result<data::tinytask::TinyTaskArea, String> {
+    use platform::windows;
+    let alive: HashSet<u32> = windows::get_roblox_pids().into_iter().collect();
+    let pid = windows::tracker()
+        .get_all()
+        .into_iter()
+        .find(|process| process.user_id == user_id && alive.contains(&process.pid))
+        .map(|process| process.pid)
+        .ok_or("noWindow")?;
+    let hwnd = windows::find_main_window(pid).ok_or("noWindow")?;
+    let rect = windows::client_rect_on_screen(hwnd).ok_or("noWindow")?;
+    Ok(data::tinytask::TinyTaskArea {
+        left: rect.left,
+        top: rect.top,
+        width: rect.width,
+        height: rect.height,
+    })
+}
+
+#[cfg(not(target_os = "windows"))]
+#[tauri::command]
+fn recording_window_area(_user_id: i64) -> Result<data::tinytask::TinyTaskArea, String> {
+    Err("noWindow".into())
+}
+
 #[cfg(test)]
 mod recordings_playback_tests {
     use super::*;
+
+    /// O "Test on one account" toca o rascunho com as regras do salvar: tecla
+    /// fora da lista é recusada, nome vazio não impede o teste.
+    #[test]
+    fn a_draft_is_tested_under_the_same_rules_as_saving() {
+        let ok = draft_for_test(Recording {
+            name: "  ".into(),
+            steps: vec![RecordingStep::Click { x_pct: 50.0, y_pct: 50.0 }],
+            source_aspect: Some(1.7778),
+            ..Default::default()
+        })
+        .unwrap();
+        assert_eq!(ok.name, "Draft");
+        assert_eq!(recording_plans_with(&ok, &[7]).get(&7).map(Vec::len), Some(1));
+        assert!(draft_for_test(Recording {
+            name: "X".into(),
+            steps: vec![RecordingStep::Key { key: "Enter".into(), hold_ms: 40 }],
+            ..Default::default()
+        })
+        .is_err());
+    }
 
     /// Um Windows de mentira: guarda o que a reprodução fez, com o relógio
     /// andando só quando ela dorme.

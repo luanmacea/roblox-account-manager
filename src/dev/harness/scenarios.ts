@@ -121,6 +121,37 @@ const baseHandler: InvokeHandler = (cmd, args) => {
       return harnessRecordings;
     case "get_recording_playback":
       return { active: false };
+    // Importar do TinyTask: a janela de referência (uma 1600x900 no monitor da
+    // esquerda; a conta de user id par tem 4:3, para o aviso de formato) e uma
+    // conversão pronta com a forma da do backend — a conversão de verdade é
+    // testada no Rust (tinytask_import_tests), não aqui.
+    case "recording_window_area": {
+      const even = Number(args?.userId) % 2 === 0;
+      return even ? { left: 0, top: 0, width: 800, height: 600 } : { left: -1700, top: 50, width: 1600, height: 900 };
+    }
+    case "import_tinytask_recording":
+      return {
+        steps: [
+          { type: "click", xPct: 53.11, yPct: 17.65 },
+          { type: "wait", ms: 141 },
+          { type: "click", xPct: 52.01, yPct: 17.72 },
+          { type: "wait", ms: 578 },
+          { type: "key", key: "W", holdMs: 120 },
+        ],
+        summary: {
+          events: 175,
+          skippedKeys: [{ key: "Enter", count: 2 }],
+          clicksOutside: 1,
+          otherMouse: 0,
+          cappedWaits: 0,
+          drags: 4,
+          truncated: false,
+          stopKey: "F8",
+        },
+        sourceAspect: 1.7778,
+      };
+    case "play_recording_draft":
+      return [{ userId: args?.userId, errorCode: null, error: null }];
     case "save_recording": {
       const rec = args?.recording as { id: string } & Record<string, unknown>;
       const saved = { ...rec, id: rec.id || `rec-${Date.now()}`, createdAt: Date.now(), updatedAt: Date.now() };

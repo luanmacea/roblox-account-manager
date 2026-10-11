@@ -248,7 +248,7 @@ describe("RecordingsTab — tocar agora e parar", () => {
     await userEvent.click(within(tryIt).getByRole("button", { name: "alpha" }));
     await userEvent.click(screen.getByRole("button", { name: "Wait" }));
     expect(screen.getByRole("button", { name: "Play now" })).toBeDisabled();
-    expect(screen.getByText("Save before playing.")).toBeInTheDocument();
+    expect(screen.getByText(/Not saved yet: pick exactly one account to test these steps/)).toBeInTheDocument();
   });
 
   it("diz por que uma conta não recebeu a gravação", async () => {
@@ -280,6 +280,155 @@ describe("RecordingsTab — tocar agora e parar", () => {
     renderTab();
     await screen.findByLabelText("Recording name");
     expect(screen.getByText(/plays the whole recording there and gives the focus back only after the last one/)).toBeInTheDocument();
+  });
+});
+
+/**
+ * Importar do TinyTask (decisão do dono, 11/10/2026: é o jeito de criar
+ * gravações). O arquivo e a janela em que ele foi gravado; o backend converte;
+ * o rascunho abre no editor com o resumo, pode ser testado numa conta e só
+ * então salvo.
+ */
+describe("RecordingsTab — importar do TinyTask", () => {
+  const IMPORTED = {
+    steps: [
+      { type: "click", xPct: 53.11, yPct: 17.65 },
+      { type: "wait", ms: 141 },
+      { type: "key", key: "W", holdMs: 80 },
+    ],
+    summary: {
+      events: 175,
+      skippedKeys: [{ key: "Enter", count: 2 }],
+      clicksOutside: 1,
+      otherMouse: 0,
+      cappedWaits: 1,
+      drags: 4,
+      truncated: false,
+      stopKey: "F8",
+    },
+    sourceAspect: 1.7778,
+  };
+  const LEFT_WINDOW = { left: -1920, top: 0, width: 1920, height: 1080 };
+
+  async function importSample(file = new File([new Uint8Array([1, 2, 3, 4])], "farm loop.rec")) {
+    await screen.findByLabelText("Recording name");
+    await userEvent.click(screen.getByRole("button", { name: "Import from TinyTask (.rec)" }));
+    const panel = screen.getByTestId("tinytask-import");
+    await userEvent.upload(within(panel).getByLabelText("TinyTask file"), file);
+    await userEvent.click(within(panel).getByRole("button", { name: "Window it was recorded in" }));
+    await userEvent.click(within(panel).getByRole("button", { name: "bravo" }));
+    await userEvent.click(within(panel).getByRole("button", { name: "Import" }));
+  }
+
+  it("converte com a janela escolhida e abre o rascunho no editor, com o resumo", async () => {
+    route({
+      recording_window_area: () => LEFT_WINDOW,
+      import_tinytask_recording: () => IMPORTED,
+    });
+    renderTab();
+    await importSample();
+
+    expect(calls("recording_window_area")[0][1]).toEqual({ userId: 22 });
+    expect(calls("import_tinytask_recording")[0][1]).toEqual({ bytes: [1, 2, 3, 4], area: LEFT_WINDOW });
+    expect(await screen.findByLabelText("Recording name")).toHaveValue("farm loop");
+    expect(screen.getByTestId("recording-step-1")).toHaveTextContent("53.11% × 17.65%");
+    const summary = screen.getByTestId("tinytask-summary");
+    expect(summary).toHaveTextContent("Imported 3 steps from 175 TinyTask events.");
+    expect(summary).toHaveTextContent("Keys left out (not in the recordings' key list): Enter ×2.");
+    expect(summary).toHaveTextContent("Clicks outside the chosen window, left out: 1.");
+    expect(summary).toHaveTextContent("Drags turned into a click where the button went down: 4.");
+    expect(summary).toHaveTextContent("Waits longer than 60 s shortened to 60 s: 1.");
+    expect(summary).toHaveTextContent("The key that stopped the TinyTask recording (F8) was left out.");
+    // Nada foi salvo ainda.
+    expect(calls("save_recording")).toHaveLength(0);
+
+    await userEvent.click(screen.getByRole("button", { name: "Save recording" }));
+    const sent = calls("save_recording")[0][1] as { recording: Record<string, unknown> };
+    expect(sent.recording).toMatchObject({ id: "", name: "farm loop", sourceAspect: 1.7778 });
+    expect(sent.recording.steps).toEqual(IMPORTED.steps);
+  });
+
+  it("testa o rascunho numa conta só, antes de salvar", async () => {
+    route({
+      recording_window_area: () => LEFT_WINDOW,
+      import_tinytask_recording: () => IMPORTED,
+      play_recording_draft: () => [{ userId: 11, errorCode: null, error: null }],
+    });
+    const { store } = renderTab();
+    await importSample();
+    await screen.findByTestId("tinytask-summary");
+
+    const test = screen.getByRole("button", { name: "Test on one account" });
+    expect(test).toBeDisabled();
+    const tryIt = screen.getByText("Try it now").parentElement as HTMLElement;
+    await userEvent.click(within(tryIt).getByRole("button", { name: "alpha" }));
+    expect(screen.getByRole("button", { name: "Play now" })).toBeDisabled();
+    await userEvent.click(test);
+
+    const sent = calls("play_recording_draft")[0][1] as { userId: number; recording: { steps: unknown[] } };
+    expect(sent.userId).toBe(11);
+    expect(sent.recording.steps).toEqual(IMPORTED.steps);
+    expect(calls("save_recording")).toHaveLength(0);
+    expect(store.addToast).toHaveBeenCalledWith("Played on 1 account");
+
+    // Duas contas marcadas: o teste é numa só.
+    await userEvent.click(within(tryIt).getByRole("button", { name: "bravo" }));
+    expect(test).toBeDisabled();
+  });
+
+  it("o erro do arquivo vira frase, e nada abre no editor", async () => {
+    route({
+      recording_window_area: () => LEFT_WINDOW,
+      import_tinytask_recording: () => Promise.reject("notTinyTask"),
+    });
+    renderTab();
+    // Extensão certa, conteúdo que não é do TinyTask: quem recusa é o backend.
+    await importSample(new File([new Uint8Array([9])], "renamed photo.rec"));
+    expect(await screen.findByText("This file is not a TinyTask recording (.rec).")).toBeInTheDocument();
+    expect(screen.getByLabelText("Recording name")).toHaveValue("Walk forward");
+    expect(screen.queryByTestId("tinytask-summary")).not.toBeInTheDocument();
+  });
+
+  it("sem cliente aberto, pede para abrir a conta da janela gravada", async () => {
+    renderTab({ launchedByProgram: new Set<number>() });
+    await screen.findByLabelText("Recording name");
+    await userEvent.click(screen.getByRole("button", { name: "Import from TinyTask (.rec)" }));
+    expect(screen.getByText(/Open the account whose Roblox window you recorded in first/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Import" })).toBeDisabled();
+  });
+
+  /**
+   * Os cliques são porcentagens da janela: numa janela de outro formato eles
+   * caem em outro lugar. A tela avisa (e ainda deixa tocar).
+   */
+  it("avisa a conta cuja janela tem outro formato que a da gravação", async () => {
+    payload = library({
+      recordings: [
+        { ...library().recordings[0], sourceAspect: 1.7778 },
+        library().recordings[1],
+      ],
+    });
+    route({
+      recording_window_area: (args) =>
+        (args as { userId: number }).userId === 11
+          ? { left: 0, top: 0, width: 800, height: 600 }
+          : { left: 0, top: 0, width: 1280, height: 720 },
+    });
+    renderTab();
+    expect(await screen.findByTestId("recording-shape-warning-11")).toHaveTextContent(
+      "alpha: this window has a different shape from the one the recording was made in"
+    );
+    expect(screen.queryByTestId("recording-shape-warning-22")).not.toBeInTheDocument();
+    const tryIt = screen.getByText("Try it now").parentElement as HTMLElement;
+    await userEvent.click(within(tryIt).getByRole("button", { name: "alpha" }));
+    expect(screen.getByRole("button", { name: "Play now" })).toBeEnabled();
+  });
+
+  it("gravação escrita à mão (sem proporção) não lê janela nem avisa", async () => {
+    renderTab();
+    await screen.findByLabelText("Recording name");
+    expect(calls("recording_window_area")).toHaveLength(0);
+    expect(screen.queryByTestId(/recording-shape-warning/)).not.toBeInTheDocument();
   });
 });
 

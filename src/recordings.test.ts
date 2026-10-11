@@ -10,7 +10,33 @@ import {
   recordingProblem,
   type RecordingsPayload,
   type RecordingStep,
+  aspectDiffers,
+  recordingNameFromFile,
 } from "./recordings";
+
+describe("gravações — importar do TinyTask", () => {
+  it("o nome vem do arquivo, sem a extensão e dentro do limite", () => {
+    expect(recordingNameFromFile("farm loop.rec")).toBe("farm loop");
+    expect(recordingNameFromFile("C:\\macros\\Boss.REC")).toBe("Boss");
+    expect(recordingNameFromFile(".rec")).toBe("");
+    expect([...recordingNameFromFile(`${"x".repeat(80)}.rec`)]).toHaveLength(60);
+  });
+
+  /**
+   * Os cliques são porcentagens da janela: tocar numa janela de outro formato
+   * desloca o ponto. Mais de 5% de diferença na proporção = aviso.
+   */
+  it("avisa quando a janela da conta tem outro formato (mais de 5%)", () => {
+    const wide = 1920 / 1080; // 1.7778
+    expect(aspectDiffers(wide, 1280, 720)).toBe(false); // mesmo formato, outro tamanho
+    expect(aspectDiffers(wide, 1296, 759)).toBe(false); // 1.7075: 4% — passa
+    expect(aspectDiffers(wide, 800, 600)).toBe(true); // 4:3
+    expect(aspectDiffers(wide, 1080, 1920)).toBe(true); // em pé
+    // Sem a proporção (gravação escrita à mão) ou sem janela: nada a dizer.
+    expect(aspectDiffers(undefined, 800, 600)).toBe(false);
+    expect(aspectDiffers(wide, 0, 600)).toBe(false);
+  });
+});
 
 const KEYS = ["Space", "W", "E"];
 

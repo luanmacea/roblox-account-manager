@@ -411,6 +411,10 @@ const TONE_EXCEPTIONS = new Set<string>([
   "Every few seconds the watcher checks each Roblox client this app launched and closes the ones that match a rule below.",
   "It never reopens them, ignores clients you started outside the app, and skips the window you are using right now.",
   "Getting Started",
+  // Texto de corpo da importação do TinyTask (aba Recordings): "saved" no
+  // inglês não faz dele um aviso de sucesso.
+  "Not saved yet: pick exactly one account to test these steps, or save to play them on several.",
+  "Pick the window you recorded in and don't move or resize it before importing. Record in a window the same size as your accounts' windows (for example after Arrange in grid): clicks are saved as a position relative to the window.",
 ]);
 
 describe.each([

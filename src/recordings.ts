@@ -20,6 +20,57 @@ export interface Recording {
   steps: RecordingStep[];
   createdAt: number;
   updatedAt: number;
+  /** Largura ÷ altura da janela em que foi gravada (importação do TinyTask). */
+  sourceAspect?: number;
+}
+
+// ── importar do TinyTask (data/tinytask.rs) ─────────────────────────────────
+
+/** Área interna de uma janela, em pixels de tela. */
+export interface TinyTaskArea {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+/** O que a importação deixou de fora ou mudou. */
+export interface TinyTaskSummary {
+  events: number;
+  skippedKeys: { key: string; count: number }[];
+  clicksOutside: number;
+  otherMouse: number;
+  cappedWaits: number;
+  drags: number;
+  truncated: boolean;
+  stopKey: string | null;
+}
+
+/** O que `import_tinytask_recording` devolve. */
+export interface TinyTaskImport {
+  steps: RecordingStep[];
+  summary: TinyTaskSummary;
+  sourceAspect: number;
+}
+
+/** Diferença de proporção a partir da qual a tela avisa. */
+export const ASPECT_TOLERANCE = 0.05;
+
+/** O nome da gravação a partir do arquivo: sem pasta, sem `.rec`, no limite. */
+export function recordingNameFromFile(fileName: string): string {
+  const base = fileName.split(/[\\/]/).pop() ?? "";
+  const name = base.replace(/\.rec$/i, "").trim();
+  return [...name].slice(0, MAX_RECORDING_NAME_CHARS).join("");
+}
+
+/**
+ * A janela `width`×`height` tem outro formato que a da gravação? Os cliques
+ * são porcentagens da janela, então em outro formato eles caem em outro ponto
+ * do jogo. Sem proporção salva, ou sem janela, não há o que comparar.
+ */
+export function aspectDiffers(sourceAspect: number | undefined, width: number, height: number): boolean {
+  if (!sourceAspect || !(width > 0) || !(height > 0)) return false;
+  return Math.abs(width / height - sourceAspect) / sourceAspect > ASPECT_TOLERANCE;
 }
 
 /** O que `get_recordings` devolve. */

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { ArrowDown, ArrowUp, Check, Copy, Crosshair, Pencil, Play, Plus, Square, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, Copy, Crosshair, FileUp, FlaskConical, Pencil, Play, Plus, Square, Trash2 } from "lucide-react";
 import { useStore } from "../../store";
 import { useTr } from "../../i18n/text";
 import { useAccountLabel } from "../../hooks/useAccountLabel";
@@ -10,6 +10,7 @@ import { NumericInput } from "../ui/NumericInput";
 import { ToggleRow } from "../ui/ToggleRow";
 import { DANGER_ACTION, ModeStatusBar, NEUTRAL_ACTION, PRIMARY_ACTION } from "./ModeStatusBar";
 import { useRecordings } from "./recordings/useRecordings";
+import { TinyTaskImportPanel, tinyTaskSummaryLines, type ImportedDraft } from "./recordings/TinyTaskImport";
 import {
   changeStepType,
   clampInt,
@@ -19,6 +20,7 @@ import {
   MAX_RECORDING_STEPS,
   MAX_WAIT_MS,
   MIN_HOLD_MS,
+  aspectDiffers,
   moveStep,
   newStep,
   recordingDurationMs,
@@ -28,6 +30,8 @@ import {
   type RecordingProblem,
   type RecordingStep,
   type RecordingStepType,
+  type TinyTaskArea,
+  type TinyTaskSummary,
 } from "../../recordings";
 
 const CARD = "theme-surface rounded-xl border theme-border p-3";
@@ -38,6 +42,8 @@ interface Draft {
   id: string;
   name: string;
   steps: RecordingStep[];
+  /** Proporção da janela de origem (gravação importada do TinyTask). */
+  sourceAspect?: number;
 }
 
 /** Tempo no jogo antes de tocar depois da reconexão (o clamp do backend). */
@@ -46,7 +52,12 @@ const MAX_AFTER_RECONNECT_S = 3_600;
 
 function sameDraft(a: Draft | null, b: Recording | null): boolean {
   if (!a || !b) return false;
-  return a.id === b.id && a.name === b.name && JSON.stringify(a.steps) === JSON.stringify(b.steps);
+  return (
+    a.id === b.id &&
+    a.name === b.name &&
+    (a.sourceAspect ?? null) === (b.sourceAspect ?? null) &&
+    JSON.stringify(a.steps) === JSON.stringify(b.steps)
+  );
 }
 
 /**
@@ -76,6 +87,11 @@ export function RecordingsTab() {
   const [starting, setStarting] = useState(false);
   const [lastResults, setLastResults] = useState<RecordingPlayResult[]>([]);
   const [capture, setCapture] = useState<{ index: number; secondsLeft: number } | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
+  const [imported, setImported] = useState<{ steps: number; summary: TinyTaskSummary } | null>(null);
+  const [testing, setTesting] = useState(false);
+  /** Área interna da janela de cada conta aberta, para o aviso de formato. */
+  const [windowAreas, setWindowAreas] = useState<Map<number, TinyTaskArea>>(new Map());
   const mountedRef = useRef(true);
   useEffect(() => {
     mountedRef.current = true;
@@ -90,7 +106,7 @@ export function RecordingsTab() {
     if (draft || recordings.length === 0) return;
     const first = recordings[0];
     setSelectedId(first.id);
-    setDraft({ id: first.id, name: first.name, steps: first.steps });
+    setDraft({ id: first.id, name: first.name, steps: first.steps, sourceAspect: first.sourceAspect });
   }, [recordings, draft]);
 
   const dirty = !!draft && !sameDraft(draft, saved);
@@ -155,13 +171,58 @@ export function RecordingsTab() {
     if (recording.id === draft?.id) return;
     if (!(await guardDirty())) return;
     setSelectedId(recording.id);
-    setDraft({ id: recording.id, name: recording.name, steps: recording.steps });
+    setImported(null);
+    setDraft({ id: recording.id, name: recording.name, steps: recording.steps, sourceAspect: recording.sourceAspect });
   }
 
   async function createNew() {
     if (!(await guardDirty())) return;
     setSelectedId(null);
+    setImported(null);
     setDraft({ id: "", name: t("New recording"), steps: [] });
+  }
+
+  /** O rascunho do TinyTask vira uma gravação nova, ainda não salva. */
+  async function takeImport(out: ImportedDraft) {
+    if (!(await guardDirty())) return;
+    setSelectedId(null);
+    setImportOpen(false);
+    setImported({ steps: out.steps.length, summary: out.summary });
+    setDraft({
+      id: "",
+      name: out.name.slice(0, MAX_RECORDING_NAME_CHARS),
+      steps: out.steps.slice(0, MAX_RECORDING_STEPS),
+      sourceAspect: out.sourceAspect > 0 ? out.sourceAspect : undefined,
+    });
+  }
+
+  /** "Test on one account": toca o rascunho sem salvar, numa conta só. */
+  async function testDraft() {
+    if (!draft || problem || playOn.length !== 1 || draft.steps.length === 0) return;
+    setTesting(true);
+    setLastResults([]);
+    try {
+      const results = await invoke<RecordingPlayResult[]>("play_recording_draft", {
+        userId: playOn[0],
+        recording: {
+          id: draft.id,
+          name: draft.name.trim(),
+          steps: draft.steps,
+          createdAt: 0,
+          updatedAt: 0,
+          sourceAspect: draft.sourceAspect,
+        },
+      });
+      const list = Array.isArray(results) ? results : [];
+      setLastResults(list.filter((r) => r.errorCode));
+      store.addToast(
+        list.some((r) => !r.errorCode) ? t("Played on 1 account") : t("The recording did not play on any window")
+      );
+    } catch (e) {
+      store.addToast(String(e), "error");
+    } finally {
+      setTesting(false);
+    }
   }
 
   async function save() {
@@ -169,10 +230,18 @@ export function RecordingsTab() {
     setSaving(true);
     try {
       const out = await invoke<Recording>("save_recording", {
-        recording: { id: draft.id, name: draft.name.trim(), steps: draft.steps, createdAt: 0, updatedAt: 0 },
+        recording: {
+          id: draft.id,
+          name: draft.name.trim(),
+          steps: draft.steps,
+          createdAt: 0,
+          updatedAt: 0,
+          sourceAspect: draft.sourceAspect,
+        },
       });
       setSelectedId(out.id);
-      setDraft({ id: out.id, name: out.name, steps: out.steps });
+      setImported(null);
+      setDraft({ id: out.id, name: out.name, steps: out.steps, sourceAspect: out.sourceAspect });
       store.addToast(t("Recording saved"));
     } catch (e) {
       store.addToast(String(e), "error");
@@ -182,7 +251,8 @@ export function RecordingsTab() {
   }
 
   function discard() {
-    if (saved) setDraft({ id: saved.id, name: saved.name, steps: saved.steps });
+    setImported(null);
+    if (saved) setDraft({ id: saved.id, name: saved.name, steps: saved.steps, sourceAspect: saved.sourceAspect });
     else setDraft(null);
   }
 
@@ -312,7 +382,39 @@ export function RecordingsTab() {
   }
 
   const duration = draft ? recordingDurationMs(draft.steps) : 0;
-  const busy = playing || starting;
+  const busy = playing || starting || testing;
+
+  // Gravação com a proporção da janela de origem: lê a janela de cada conta
+  // aberta (só o retângulo) para avisar quem tem outro formato.
+  const sourceAspect = draft?.sourceAspect;
+  const openIdsKey = openAccounts.map((a) => a.UserID).join(",");
+  useEffect(() => {
+    if (!sourceAspect || !openIdsKey) {
+      setWindowAreas(new Map());
+      return;
+    }
+    let alive = true;
+    const ids = openIdsKey.split(",").map(Number);
+    void Promise.all(
+      ids.map((userId) =>
+        invoke<TinyTaskArea>("recording_window_area", { userId })
+          .then((area) => [userId, area] as const)
+          .catch(() => null)
+      )
+    ).then((pairs) => {
+      if (!alive) return;
+      const next = new Map<number, TinyTaskArea>();
+      for (const pair of pairs) if (pair && pair[1]) next.set(pair[0], pair[1]);
+      setWindowAreas(next);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [sourceAspect, openIdsKey]);
+  const shapeWarnings = openAccounts.filter((a) => {
+    const area = windowAreas.get(a.UserID);
+    return !!area && aspectDiffers(sourceAspect, area.width, area.height);
+  });
 
   return (
     <div className="@container/recs flex h-full min-h-0 flex-col gap-3">
@@ -348,7 +450,24 @@ export function RecordingsTab() {
         <div className="grid grid-cols-1 gap-3 @3xl/recs:grid-cols-[minmax(280px,360px)_minmax(0,1fr)] items-start">
           <div className="space-y-3">
             <section className={CARD} aria-label={t("Library")}>
-              <div className="mb-2 text-[13px] font-semibold text-[var(--panel-fg)]">{t("Library")}</div>
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <span className="text-[13px] font-semibold text-[var(--panel-fg)]">{t("Library")}</span>
+                <button
+                  onClick={() => setImportOpen((v) => !v)}
+                  aria-expanded={importOpen}
+                  className="sidebar-btn-sm flex items-center gap-1"
+                >
+                  <FileUp size={12} strokeWidth={1.75} aria-hidden />
+                  {t("Import from TinyTask (.rec)")}
+                </button>
+              </div>
+              {importOpen ? (
+                <TinyTaskImportPanel
+                  windows={openAccounts.map((a) => ({ userId: a.UserID, name: accountName(a.UserID) }))}
+                  onImported={(out) => void takeImport(out)}
+                  onCancel={() => setImportOpen(false)}
+                />
+              ) : null}
               {recordings.length === 0 ? (
                 <div className="text-[11px] theme-muted leading-4">
                   {t("No recordings yet. Create one and add its steps: keys, clicks on a point of the window and waits.")}
@@ -502,6 +621,20 @@ export function RecordingsTab() {
                     className="sidebar-input text-xs flex-1 min-w-0"
                   />
                 </div>
+                {imported ? (
+                  <div
+                    className="rounded-lg border border-sky-500/25 bg-sky-500/10 px-3 py-2 text-[11px] leading-4 text-sky-100 space-y-0.5"
+                    role="status"
+                    data-testid="tinytask-summary"
+                  >
+                    {tinyTaskSummaryLines(t, imported.steps, imported.summary).map((line) => (
+                      <div key={line}>{line}</div>
+                    ))}
+                    <div className="theme-muted">
+                      {t("Review the steps, test them on one account below, then save.")}
+                    </div>
+                  </div>
+                ) : null}
                 <div className="text-[11px] theme-muted">
                   {t("{{count}} steps · about {{duration}} per window", {
                     count: draft.steps.length,
@@ -614,8 +747,34 @@ export function RecordingsTab() {
                       <Play size={12} strokeWidth={2} aria-hidden />
                       {t("Play now")}
                     </button>
-                    {dirty ? <span className="text-[11px] theme-muted">{t("Save before playing.")}</span> : null}
+                    {dirty ? (
+                      <button
+                        onClick={() => void testDraft()}
+                        disabled={!!problem || playOn.length !== 1 || busy || draft.steps.length === 0}
+                        className={`${NEUTRAL_ACTION} flex items-center gap-1.5`}
+                      >
+                        <FlaskConical size={12} strokeWidth={2} aria-hidden />
+                        {t("Test on one account")}
+                      </button>
+                    ) : null}
                   </div>
+                  {dirty ? (
+                    <div className="text-[11px] theme-muted">
+                      {t("Not saved yet: pick exactly one account to test these steps, or save to play them on several.")}
+                    </div>
+                  ) : null}
+                  {shapeWarnings.map((a) => (
+                    <div
+                      key={a.UserID}
+                      className="rounded-lg bg-amber-500/10 border border-amber-500/20 px-3 py-2 text-[11px] text-amber-200 break-words"
+                      data-testid={`recording-shape-warning-${a.UserID}`}
+                    >
+                      {t(
+                        "{{name}}: this window has a different shape from the one the recording was made in, so the clicks may land in other spots. It still plays.",
+                        { name: accountName(a.UserID) }
+                      )}
+                    </div>
+                  ))}
                   {lastResults.map((r) => (
                     <div
                       key={r.userId}

@@ -13,9 +13,12 @@ próxima e só no fim devolve o foco.
 reprodução, qual gravação vale para cada conta e os dois gatilhos (Modo AFK e
 depois da reconexão). Os passos são escritos à mão no editor.
 
-**O que não entrou:** a gravação ao vivo (capturar o que o usuário faz numa
-janela e virar passos). Não foi implementada nesta branch — ver "Fora de escopo"
-abaixo.
+**Como se cria uma gravação (decisão do dono, 11/10/2026):** importando um
+`.rec` do **TinyTask**, a ferramenta com que ele já grava as macros — ver
+[Importar do TinyTask](#importar-do-tinytask-rec). A gravação ao vivo dentro do
+app (capturar o que o usuário faz) foi **abandonada**: o TinyTask já grava, e o
+app não precisa ler teclado nem mouse. O editor continua para revisar e ajustar
+à mão.
 
 ## Onde fica o código
 
@@ -27,7 +30,9 @@ abaixo.
 | [platform/windows/input.rs](../../src-tauri/src/platform/windows/input.rs) | As portas novas: `press_recording_key` (tecla da lista das gravações) e `click_recording_point` (a receita do clique do AFK, com o clique de foco opcional) |
 | [commands/reconnect.rs](../../src-tauri/src/commands/reconnect.rs) | Arma o gatilho no `Relaunched` e chama a passada dele a cada 2 s |
 | [RecordingsTab.tsx](../../src/components/afk-mode/RecordingsTab.tsx), [recordings/useRecordings.ts](../../src/components/afk-mode/recordings/useRecordings.ts) | A aba **Recordings** do Modo AFK |
-| [recordings.ts](../../src/recordings.ts) | Tipos e regras puras da tela (espelho dos limites do backend) |
+| [data/tinytask.rs](../../src-tauri/src/data/tinytask.rs) | Importar do TinyTask: leitura do `.rec` (`parse_tinytask`) e conversão em passos (`convert_tinytask_events`), puras; os comandos `import_tinytask_recording`, `recording_window_area` e `play_recording_draft` moram em commands/recordings.rs |
+| [recordings/TinyTaskImport.tsx](../../src/components/afk-mode/recordings/TinyTaskImport.tsx) | O painel "Import from TinyTask (.rec)", as frases do resumo e dos erros |
+| [recordings.ts](../../src/recordings.ts) | Tipos e regras puras da tela (espelho dos limites do backend; nome a partir do arquivo, `aspectDiffers`) |
 | [ClicksTab.tsx](../../src/components/afk-mode/ClicksTab.tsx), [useClicksController.ts](../../src/components/afk-mode/clicks/useClicksController.ts) | O modo "Play the recording" dos cliques AFK |
 
 ## A tela
@@ -47,9 +52,18 @@ dono: configuração de muitas contas não vai para o painel de uma conta — ve
 - **Mark** num passo de clique: os mesmos 3 s do Marcar do Modo AFK
   (`afk_capture_point`, que só lê a **posição** do cursor uma vez); o ponto é
   porcentagem da área interna da janela.
+- **Import from TinyTask (.rec)** no cabeçalho da Library — ver
+  [Importar do TinyTask](#importar-do-tinytask-rec).
 - **Try it now:** marca contas com cliente aberto pelo app e toca a gravação
-  **salva** nelas (`play_recording_now`). Com mudança sem salvar, não toca.
-  Erros por conta aparecem embaixo, com a frase de cada código.
+  **salva** nelas (`play_recording_now`). Com mudança sem salvar, **Play now**
+  fica desligado e aparece **Test on one account**: com exatamente uma conta
+  marcada, toca o rascunho nela (`play_recording_draft`, que valida como o
+  salvar e não grava nada). Erros por conta aparecem embaixo, com a frase de
+  cada código. Gravação com a proporção da janela de origem (`sourceAspect`):
+  a tela lê a área interna da janela de cada conta aberta
+  (`recording_window_area`, só o retângulo) e avisa em âmbar quem tem formato
+  diferente em mais de 5% (`aspectDiffers`) — os cliques são porcentagens da
+  janela, então em outro formato caem em outro ponto do jogo. Ainda toca.
 - **Which recording plays:** a de **todas as contas** e, por conta, a **própria**
   (que vence) ou "Same as all accounts". A lista mostra as contas com cliente
   aberto pelo app e as que já têm gravação própria.
@@ -111,6 +125,75 @@ restauração e na migração de pasta):
 - Apagar uma gravação a tira da escolha de todas as contas e das contas que a
   usavam. Escolha que aponta para gravação inexistente (arquivo editado à mão)
   cai na de todas.
+- `sourceAspect` (opcional, campo novo com padrão seguro — a versão do arquivo
+  continua 1): largura ÷ altura da área interna da janela em que a gravação foi
+  feita, gravado pela importação do TinyTask e copiado ao duplicar. Fora de
+  0,2–5 (arquivo editado à mão) some em vez de recusar a gravação. Gravação
+  escrita à mão não tem, e não há aviso de formato.
+
+## Importar do TinyTask (.rec)
+
+Decisão do dono (11/10/2026): é **o** jeito de criar gravações. Ele grava a
+macro no TinyTask, numa janela do Roblox aberta pelo app, e importa.
+
+**O formato** (`parse_tinytask`). O TinyTask grava com o gancho de diário do
+Windows e o `.rec` é a sequência crua das estruturas `EVENTMSG`, sem cabeçalho:
+`message`, `paramL`, `paramH`, `time`, `hwnd`, cada um com 4 bytes
+little-endian — **20 bytes por evento** (o TinyTask é de 32 bits). Conferido num
+`.rec` real do dono (3500 bytes = 175 eventos: 162 `WM_MOUSEMOVE`, 6 pares
+`WM_LBUTTONDOWN`/`UP`, 1 `WM_KEYDOWN` no fim; ~4,7 s; o arquivo não entra no
+repositório). Teclado: `paramL` = código virtual no byte baixo, scan code no
+seguinte. Mouse: `paramL`/`paramH` = x/y em coordenadas de **tela** (lidos como
+`i32`: monitor à esquerda do principal dá x negativo). `time` = relógio do
+Windows em ms (a diferença com volta do relógio continua certa). Também aceita 24
+bytes por evento (gravador de 64 bits). Arquivo vazio, maior que 8 MB, de tamanho
+que não fecha ou com mensagem que não é de teclado/mouse é recusado
+(`empty`/`tooLarge`/`notTinyTask`).
+
+**A janela de referência.** A pessoa escolhe a conta em cuja janela gravou — só
+contas com cliente aberto pelo app — e o app lê a área interna dessa janela
+agora (`recording_window_area` → `client_rect_on_screen`; só o retângulo). A
+janela **não pode ter sido movida nem redimensionada** desde a gravação (a tela
+diz isso). Grave numa janela do mesmo tamanho das janelas das contas (por
+exemplo depois de **Arrange in grid**).
+
+**A conversão** (`convert_tinytask_events`):
+
+- **Clique:** a posição do `WM_LBUTTONDOWN` vira porcentagem da área interna (o
+  mesmo mapa do Marcar: 0% primeira coluna/linha, 100% a última) — o mesmo ponto
+  relativo que os cliques do Modo AFK usam, então a reprodução acha o ponto em
+  janelas de outro tamanho. Clique **fora** da área: fica fora e é contado —
+  nunca é puxado para a borda. Duplo clique = dois cliques. Botão solto a mais
+  de 10 px de onde desceu (arrasto): fica o clique onde desceu, e o resumo conta.
+  Movimentos de mouse não viram passo. Botão direito, do meio, laterais e roda:
+  contados e deixados de fora.
+- **Tecla:** só as da lista fechada das gravações. Apertar e soltar sem nada no
+  meio vira um toque (`key`) com o tempo segurado (piso de 10 ms); senão
+  `keyDown`/espera/`keyUp`. A repetição automática de quem está apertada é
+  ignorada. Shift esquerdo, direito ou genérico = "Shift". Fora da lista, ou
+  junto de Ctrl/Alt/Windows (inclusive tecla de sistema, que é Alt+tecla): fica
+  fora e é listada ("Enter ×2", "Ctrl+W") — soltar só o W de um Ctrl+W mudaria o
+  que a gravação faz. Tecla que ficou apertada no meio ganha o `keyUp` no fim.
+- **A tecla de parar do TinyTask:** a gravação para no "apertar" do atalho, então
+  o último evento (fora movimentos de mouse) é uma tecla apertada que nunca é
+  solta. Ela fica fora e o resumo diz qual foi ("F8" no arquivo do dono; um
+  atalho com modificadores vira "Ctrl+R").
+- **Tempo:** o intervalo entre dois passos vira `wait`. O tempo antes do
+  primeiro passo e depois do último não vira nada. Intervalo menor que **30 ms**
+  não vira passo: soma na próxima espera (não no tempo segurado da tecla
+  seguinte). Espera maior que **60 s** é encurtada para 60 s e contada.
+- Mais de 500 passos: o resto fica fora (`truncated`).
+
+**Depois.** Nada é salvo: o rascunho abre no editor como gravação nova (nome do
+arquivo sem `.rec`), com o resumo do que ficou e do que ficou de fora; dá para
+**Test on one account** antes de salvar. Salvar grava os passos e o
+`sourceAspect` da janela de referência.
+
+Resultado do `.rec` real do dono com uma área de referência de 2560×1440 em
+(0, 0) (a janela de verdade não foi medida): 6 cliques (53,11%×17,65%,
+52,01%×17,72%, 51,66%×17,79%, 69,64%×17,58%, 72,57%×17,44%, 78,35%×17,37%)
+com esperas de 141, 156, 578, 485 e 531 ms; 4 arrastos viraram clique; a F8 do
+fim ficou fora.
 
 ## Como toca
 
@@ -233,10 +316,12 @@ janela), xmacro (GPL; texto com `Delay`), rdev e enigo (MIT, Rust), monio
 
 ## Fora de escopo
 
-- **Gravação ao vivo** (capturar o que o usuário faz e virar passos): não
-  implementada. O editor cobre o caso de uso com passos escritos à mão.
-- Botão direito, rolagem, movimento de mouse, velocidade e repetição dentro da
-  gravação (repetir é o intervalo do Modo AFK).
+- **Gravação ao vivo** (capturar o que o usuário faz e virar passos):
+  abandonada (decisão do dono, 11/10/2026) — a importação do TinyTask cobre, e o
+  app continua sem ler teclado nem mouse.
+- Botão direito, rolagem, movimento de mouse, arrasto, velocidade e repetição
+  dentro da gravação (repetir é o intervalo do Modo AFK). Na importação do
+  TinyTask eles são contados e deixados de fora (o arrasto vira clique).
 - Tocar em várias janelas ao mesmo tempo: o Roblox só aceita entrada na janela
   em foco.
 
@@ -247,7 +332,23 @@ Suíte `recordings` (`bun run t recordings`):
 - `recordings_store_tests` — id novo, JSON camelCase com `type`, JSON documentado
   acima, substituir mantendo a criação, duplicar, apagar limpando as escolhas,
   escolher gravação inexistente, `.bak`, arquivo ilegível nunca sobrescrito,
-  leitura do disco a cada vez, teto da biblioteca.
+  leitura do disco a cada vez, teto da biblioteca, `sourceAspect` guardado,
+  copiado, opcional no JSON e descartado quando impossível.
+- `tinytask_import_tests` — `.rec` de 20 e de 24 bytes por evento, arquivo que
+  não é do TinyTask, toque com o tempo segurado, repetição automática, teclas
+  sobrepostas, Shift e setas, teclas fora da lista e combinações com
+  Ctrl/Alt/Windows listadas, tecla deixada apertada, a tecla de parar do fim
+  (sozinha e com modificador), cliques relativos à janela (canto, meio, último
+  pixel), janela em x negativo, o mesmo ponto relativo em janelas de tamanhos
+  diferentes, clique um pixel fora de janela em x negativo **não** puxado para a
+  borda, outros botões, arrasto, duplo clique, tempo antes do primeiro passo,
+  intervalos minúsculos somados, teto de 60 s, volta do relógio, piso do toque,
+  teto de passos, área vazia, resultado que passa na validação, um buffer
+  sintético com a forma exata do `.rec` real do dono (175 eventos, 3500 bytes →
+  6 cliques e 5 esperas). `converts_the_file_in_tinytask_sample` (ignorado)
+  converte um `.rec` de fora do repositório: `TINYTASK_SAMPLE=<arquivo>
+  [TINYTASK_AREA=esq,topo,larg,alt] cargo test converts_the_file_in_tinytask_sample
+  -- --ignored --nocapture`.
 - `recordings_validation_tests` — lista de teclas (começa com as do AFK, deixa
   fora as perigosas, todas as letras e números), setas estendidas, nome, tecla
   fora da lista, limites de tempo e de ponto, teto de passos e de 10 min,
@@ -257,7 +358,7 @@ Suíte `recordings` (`bun run t recordings`):
   10 min soltando a tecla, foco perdido antes da tecla e antes do clique, tecla
   deixada apertada solta no fim, soltar o que não foi apertado não manda nada,
   recusa de tecla/clique, códigos do status, qual gravação cada conta toca
-  (vazia não toca).
+  (vazia não toca), o rascunho do "Test on one account" validado como o salvar.
 - `recordings_after_reconnect_tests` — só depois do tempo no jogo, só a conta que
   reconectou, uma vez; sair do jogo recomeça; cliente novo recomeça; opção
   desligada esquece; cliente do site nunca; desiste em 15 min; limites do tempo.
@@ -267,8 +368,12 @@ Suíte `recordings` (`bun run t recordings`):
   é enviada, janela nula nunca recebe clique.
 - `RecordingsTab.test.tsx` — biblioteca, editor, salvar/descartar, motivo de não
   salvar, mover/remover, renomear/duplicar/apagar, releitura no evento, quem toca
-  o quê, gatilho da reconexão no INI, tocar agora, erros por conta, parar; e o
-  modo gravação dos cliques AFK. `recordings.test.ts` — regras puras.
+  o quê, gatilho da reconexão no INI, tocar agora, erros por conta, parar; a
+  importação do TinyTask (janela escolhida, rascunho com resumo, salvar com
+  `sourceAspect`, testar numa conta só, erro do arquivo, sem cliente aberto,
+  aviso de formato de janela); e o modo gravação dos cliques AFK.
+  `recordings.test.ts` — regras puras (inclusive nome do arquivo e
+  `aspectDiffers`).
 
 Tecla, clique e janela de verdade ficam fora de teste: precisam de um cliente
 Roblox aberto. **Falta teste do dono com cliente real.**

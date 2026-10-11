@@ -192,6 +192,8 @@ export const SUITES: Record<string, TestSuite> = {
       "recordings_playback_tests",
       "recordings_after_reconnect_tests",
       "recordings_afk_mode_tests",
+      // Importar do TinyTask (.rec): leitura do arquivo e conversão em passos.
+      "tinytask_import_tests",
       // As portas novas do módulo de entrada (press_recording_key, click_recording_point).
       "win_input_tests",
       // A reprodução mora na árvore do Modo AFK: a trava continua valendo.
