@@ -75,13 +75,19 @@ enum AfkMode {
     /// Clique esquerdo num ponto relativo da janela da conta. Existe para quem
     /// quer o personagem **parado**: toda tecla da lista mexe nele.
     Click,
+    /// Toca a gravação da conta (a própria ou a de todas) — ver
+    /// docs/features/recordings.md.
+    Recording,
 }
 
 impl AfkMode {
     /// Qualquer valor desconhecido vira `Key`: é o modo que já existia.
     fn parse(raw: &str) -> AfkMode {
-        if raw.trim().eq_ignore_ascii_case("click") {
+        let raw = raw.trim();
+        if raw.eq_ignore_ascii_case("click") {
             AfkMode::Click
+        } else if raw.eq_ignore_ascii_case("recording") {
+            AfkMode::Recording
         } else {
             AfkMode::Key
         }
@@ -91,6 +97,7 @@ impl AfkMode {
         match self {
             AfkMode::Key => "key",
             AfkMode::Click => "click",
+            AfkMode::Recording => "recording",
         }
     }
 }
@@ -261,6 +268,19 @@ const AFK_CLICK_FINAL_PAUSE_MS: u64 = 12;
 /// Todo desvio vai para **dentro** da janela, inclusive nas bordas. `None` para
 /// janela sem área.
 fn afk_click_plan(rect: AfkClientRect, point: AfkPoint, hold_ms: u64) -> Option<Vec<AfkMouseStep>> {
+    afk_click_plan_with(rect, point, hold_ms, true)
+}
+
+/// A receita, com o clique de foco opcional. O AFK sempre o dá (a janela acabou
+/// de vir para frente); numa Gravação só o primeiro clique o dá — os seguintes
+/// já acham o jogo focado, e um clique a mais apertaria o botão do jogo duas
+/// vezes.
+fn afk_click_plan_with(
+    rect: AfkClientRect,
+    point: AfkPoint,
+    hold_ms: u64,
+    focus_click: bool,
+) -> Option<Vec<AfkMouseStep>> {
     use AfkMouseStep::*;
     let (x, y) = afk_point_to_pixel(rect, point)?;
     // Desvio para o lado de dentro: na última coluna, para a esquerda.
@@ -294,8 +314,10 @@ fn afk_click_plan(rect: AfkClientRect, point: AfkPoint, hold_ms: u64) -> Option<
 
     let mut steps = Vec::new();
     click(&mut steps, true);
-    steps.push(Wait(AFK_CLICK_FOCUS_SETTLE_MS));
-    click(&mut steps, false);
+    if focus_click {
+        steps.push(Wait(AFK_CLICK_FOCUS_SETTLE_MS));
+        click(&mut steps, false);
+    }
     Some(steps)
 }
 
@@ -315,12 +337,16 @@ fn afk_absolute_input(x: i32, y: i32, desktop: AfkClientRect) -> (i32, i32) {
 enum AfkCycleAction {
     Key(String),
     Click(HashMap<i64, AfkPoint>),
+    /// Os passos da gravação de cada conta, já resolvidos (a própria ou a de
+    /// todas). Conta sem gravação não está no mapa e é pulada sem foco nenhum.
+    Recording(HashMap<i64, Vec<data::recordings::RecordingStep>>),
 }
 
 /// Por que um start não pode acontecer. No modo tecla, sem tecla escolhida o
 /// modo **não liga**: inventar uma tecla padrão seria mexer no personagem sem o
 /// usuário pedir. O modo clique não usa tecla.
 fn validate_afk_start(mode: AfkMode, key: &str, user_ids: &[i64]) -> Result<(), String> {
+    // O modo gravação também não usa tecla: quem toca é a gravação de cada conta.
     if mode == AfkMode::Key && afk_virtual_key(key).is_none() {
         return Err("Choose one of the AFK mode keys before starting".into());
     }
@@ -343,6 +369,14 @@ enum AfkSendError {
     KeyRefused,
     /// O clique foi recusado (ou o "solta o botão" não passou).
     ClickRefused,
+    /// Modo gravação: a conta não tem gravação (nem a própria, nem a de todas).
+    /// A janela nem vem para frente.
+    NoRecording,
+    /// Modo gravação: outra janela veio para frente no meio da gravação, e o
+    /// resto dela **não** foi tocado (cairia na janela do usuário).
+    FocusLost,
+    /// Modo gravação: parada no meio da gravação.
+    Stopped,
     /// Falha inesperada do ciclo.
     Internal(String),
 }
@@ -354,6 +388,9 @@ impl AfkSendError {
             AfkSendError::FocusDenied => "focusDenied",
             AfkSendError::KeyRefused => "keyRefused",
             AfkSendError::ClickRefused => "clickRefused",
+            AfkSendError::NoRecording => "noRecording",
+            AfkSendError::FocusLost => "focusLost",
+            AfkSendError::Stopped => "stopped",
             AfkSendError::Internal(_) => "internal",
         }
     }
@@ -367,6 +404,11 @@ impl AfkSendError {
             }
             AfkSendError::KeyRefused => "Windows refused the synthetic key".into(),
             AfkSendError::ClickRefused => "Windows refused the synthetic click".into(),
+            AfkSendError::NoRecording => "This account has no recording to play".into(),
+            AfkSendError::FocusLost => {
+                "Another window came to the front, so the rest of the recording was not played".into()
+            }
+            AfkSendError::Stopped => "Stopped in the middle of the recording".into(),
             AfkSendError::Internal(message) => message.clone(),
         }
     }
@@ -533,8 +575,9 @@ struct AfkAccountStatus {
     next_send_at_ms: i64,
     sends: u64,
     last_error: Option<String>,
-    /// `noWindow`, `focusDenied`, `keyRefused`, `clickRefused` ou `internal` — a
-    /// tela escolhe a frase traduzida por aqui, em vez de casar texto em inglês.
+    /// `noWindow`, `focusDenied`, `keyRefused`, `clickRefused`, `noRecording`,
+    /// `focusLost`, `stopped` ou `internal` — a tela escolhe a frase traduzida
+    /// por aqui, em vez de casar texto em inglês.
     last_error_code: Option<String>,
 }
 
@@ -843,6 +886,14 @@ fn run_afk_cycle_blocking(
                     Some(hwnd) => hwnd,
                     None => continue,
                 };
+                // Modo gravação sem gravação para esta conta: nada a tocar, e
+                // a janela nem vem para frente.
+                if let AfkCycleAction::Recording(plans) = action {
+                    if !plans.contains_key(&user_id) {
+                        outcome.push((user_id, Some(AfkSendError::NoRecording)));
+                        continue;
+                    }
+                }
                 // Quem trabalha com os clientes minimizados não pediu para
                 // vê-los: o estado é devolvido depois do envio.
                 let was_minimized = windows::window_is_minimized(hwnd);
@@ -875,6 +926,11 @@ fn run_afk_cycle_blocking(
                                 .err()
                                 .map(|_| AfkSendError::ClickRefused)
                         }
+                        AfkCycleAction::Recording(plans) => plans.get(&user_id).and_then(|steps| {
+                            play_recording_in_window(hwnd, steps, stop_flag)
+                                .err()
+                                .map(afk_error_from_playback)
+                        }),
                     }
                 };
 
@@ -909,6 +965,12 @@ fn run_afk_cycle_blocking(
 fn afk_cycle_action(app: &tauri::AppHandle, config: &AfkConfig, targets: &[i64]) -> AfkCycleAction {
     match config.mode {
         AfkMode::Key => AfkCycleAction::Key(config.key.clone()),
+        // A gravação de cada conta é lida **agora**: editar a gravação, ou
+        // trocar qual vale para a conta, vale no ciclo seguinte.
+        AfkMode::Recording => AfkCycleAction::Recording(recording_plans_for(
+            &app.state::<data::recordings::RecordingStore>().load().unwrap_or_default(),
+            targets,
+        )),
         AfkMode::Click => {
             let overrides: HashMap<i64, AfkPoint> = app
                 .state::<AccountStore>()
@@ -1035,6 +1097,14 @@ async fn start_afk_mode(
     let user_ids = dedupe_preserving_order(user_ids);
     let mode = AfkMode::parse(&mode);
     validate_afk_start(mode, &key, &user_ids)?;
+    if mode == AfkMode::Recording {
+        let file = app.state::<data::recordings::RecordingStore>().load()?;
+        if recording_plans_for(&file, &user_ids).is_empty() {
+            return Err(
+                "None of these accounts has a recording to play: pick one in the Recordings tab".into(),
+            );
+        }
+    }
 
     stop_afk_session().await;
 

@@ -15,10 +15,11 @@ use data::avatars::AvatarStore;
 use data::crypto;
 use data::game_lists::GameListsStore;
 use data::launch_presets::LaunchPresetStore;
+use data::recordings::RecordingStore;
 use data::session_history::SessionHistoryStore;
 use data::scripts::ScriptStore;
 use data::settings::{
-    get_avatars_path, get_game_lists_path, get_launch_presets_path, get_scripts_path, get_session_history_path, get_settings_path, get_theme_path, get_theme_presets_path,
+    get_avatars_path, get_game_lists_path, get_launch_presets_path, get_recordings_path, get_scripts_path, get_session_history_path, get_settings_path, get_theme_path, get_theme_presets_path,
     SettingsStore, ThemePresetStore, ThemeStore,
 };
 use data::versions::{get_versions_catalog_path, VersionsCatalogStore};
@@ -45,6 +46,7 @@ include!("commands/isolation.rs");
 include!("commands/versions.rs");
 include!("commands/watcher.rs");
 include!("commands/afk.rs");
+include!("commands/recordings.rs");
 include!("commands/services.rs");
 include!("commands/updater.rs");
 include!("commands/backups.rs");
@@ -246,6 +248,7 @@ pub fn run() {
     let avatar_store = AvatarStore::new(get_avatars_path());
     let game_lists_store = GameListsStore::new(get_game_lists_path());
     let launch_preset_store = LaunchPresetStore::new(get_launch_presets_path());
+    let recording_store = RecordingStore::new(get_recordings_path());
     let session_history_store = SessionHistoryStore::new(get_session_history_path());
     let versions_catalog = VersionsCatalogStore::new(get_versions_catalog_path());
     let image_cache = ImageCache::new();
@@ -273,6 +276,7 @@ pub fn run() {
         .manage(avatar_store)
         .manage(game_lists_store)
         .manage(launch_preset_store)
+        .manage(recording_store)
         .manage(session_history_store)
         .manage(versions_catalog)
         .manage(image_cache)
@@ -583,6 +587,15 @@ pub fn run() {
             get_afk_keys,
             afk_trigger_now,
             afk_capture_point,
+            get_recordings,
+            save_recording,
+            duplicate_recording,
+            delete_recording,
+            set_default_recording,
+            set_account_recording,
+            play_recording_now,
+            stop_recording_playback,
+            get_recording_playback,
             get_auto_reconnect_status,
             stop_auto_reconnect,
             retry_auto_reconnect,

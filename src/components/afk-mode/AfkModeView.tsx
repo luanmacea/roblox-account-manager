@@ -1,9 +1,10 @@
 import { useRef, useState, type KeyboardEvent } from "react";
-import { MousePointerClick, Repeat, X, type LucideIcon } from "lucide-react";
+import { Clapperboard, MousePointerClick, Repeat, X, type LucideIcon } from "lucide-react";
 import { useStore, type AfkModeTab } from "../../store";
 import { useTr } from "../../i18n/text";
 import { RejoinTab } from "./RejoinTab";
 import { ClicksTab } from "./ClicksTab";
+import { RecordingsTab } from "./RecordingsTab";
 
 export interface AfkModeViewProps {
   /** `modal`: dentro do `AfkModeDialog`. `page`: página inteira da navegação. */
@@ -43,7 +44,7 @@ export function AfkModeView({
   const t = useTr();
   const store = useStore();
   const [tab, setTab] = useState<AfkModeTab>(initialTab);
-  const tabRefs = useRef<Record<AfkModeTab, HTMLButtonElement | null>>({ rejoin: null, clicks: null });
+  const tabRefs = useRef<Record<AfkModeTab, HTMLButtonElement | null>>({ rejoin: null, clicks: null, recordings: null });
   const page = variant === "page";
 
   const tabs: {
@@ -61,6 +62,15 @@ export function AfkModeView({
       running: store.afkStatus?.active === true,
     },
     {
+      // Gravações (docs/features/recordings.md): o que tocam fica nesta aba;
+      // o "rodando" é o do Modo AFK no modo gravação.
+      id: "recordings",
+      label: t("Recordings"),
+      hint: t("Sequences of keys, clicks and waits played on each window"),
+      Icon: Clapperboard,
+      running: store.afkStatus?.active === true && store.afkStatus?.mode === "recording",
+    },
+    {
       id: "rejoin",
       label: t("Auto Rejoin"),
       hint: t("Closes and reopens alt clients on a timer"),
@@ -72,13 +82,15 @@ export function AfkModeView({
   function onTabKeyDown(e: KeyboardEvent<HTMLButtonElement>) {
     if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
     e.preventDefault();
-    const next: AfkModeTab = tab === "rejoin" ? "clicks" : "rejoin";
+    const order = tabs.map((it) => it.id);
+    const at = order.indexOf(tab);
+    const next: AfkModeTab = order[(at + (e.key === "ArrowRight" ? 1 : order.length - 1)) % order.length];
     setTab(next);
     tabRefs.current[next]?.focus();
   }
 
   const tabList = (
-    <div role="tablist" aria-label={t("AFK Mode")} data-tour="afk-tabs" className={`grid shrink-0 grid-cols-2 gap-2 ${page ? "" : "min-w-[min(100%,520px)] flex-1"}`}>
+    <div role="tablist" aria-label={t("AFK Mode")} data-tour="afk-tabs" className={`grid shrink-0 grid-cols-3 gap-2 ${page ? "" : "min-w-[min(100%,520px)] flex-1"}`}>
       {tabs.map(({ id, label, hint, Icon, running }) => {
         const selected = tab === id;
         return (
@@ -204,6 +216,15 @@ export function AfkModeView({
         className="min-h-0 flex-1"
       >
         <ClicksTab targetUserIds={targetUserIds} />
+      </div>
+      <div
+        role="tabpanel"
+        id="afk-mode-panel-recordings"
+        aria-labelledby="afk-mode-tab-recordings"
+        hidden={tab !== "recordings"}
+        className="min-h-0 flex-1"
+      >
+        <RecordingsTab />
       </div>
     </div>
   );

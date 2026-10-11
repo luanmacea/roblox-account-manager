@@ -235,6 +235,12 @@ continua sem relançar nada).
   é dispensada.
 - **Auto Rejoin manda:** conta gerenciada pelo Auto Rejoin (sessão ativa e a
   conta na lista) não entra na reconexão; se ele assumir no meio, a reconexão sai.
+- **Gravação depois da reconexão** (opcional, `Recordings.AfterReconnect`,
+  padrão desligado): a conta que a reconexão relançou toca a gravação dela
+  **uma vez**, só nela, depois de ficar `Recordings.AfterReconnectDelaySeconds`
+  (padrão 30 s) no jogo — para voltar ao lugar do mapa. O `Relaunched` arma; a
+  passada de 2 s confere o jogo pelo log do cliente novo. Ver
+  [recordings.md](recordings.md#depois-da-reconexão).
 - **PC acordado:** enquanto alguma conta com a opção ligada tem cliente aberto
   pelo app (ou há reconexão em andamento), o Windows não dorme
   (`General.KeepPcAwake`, ver [afk-mode.md](afk-mode.md#pc-acordado)).

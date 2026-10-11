@@ -78,6 +78,14 @@ const settings: Record<string, Record<string, string>> = {
 /** O `RAMGameLists.json` do harness, em memória. */
 let harnessGameLists: Record<string, unknown[]> | null = null;
 
+/** O `RAMRecordings.json` do harness, em memória (começa vazio). */
+const harnessRecordings: Record<string, unknown> = {
+  recordings: [],
+  defaultId: null,
+  accountIds: {},
+  keys: ["Space", "W", "A", "S", "D", "E", "F", "R", "Q", "1", "2", "3", "4", "5", "Shift", "Up", "Down", "Left", "Right"],
+};
+
 const baseHandler: InvokeHandler = (cmd, args) => {
   switch (cmd) {
     case "needs_password":
@@ -105,6 +113,39 @@ const baseHandler: InvokeHandler = (cmd, args) => {
       return [];
     case "get_unidentified_clients":
       return [];
+    // Gravações (`commands/recordings.rs`): a biblioteca em memória, sem
+    // validação nenhuma — quem valida de verdade é o backend.
+    case "get_recordings":
+      return harnessRecordings;
+    case "get_recording_playback":
+      return { active: false };
+    case "save_recording": {
+      const rec = args?.recording as { id: string } & Record<string, unknown>;
+      const saved = { ...rec, id: rec.id || `rec-${Date.now()}`, createdAt: Date.now(), updatedAt: Date.now() };
+      const list = harnessRecordings.recordings as { id: string }[];
+      const at = list.findIndex((r) => r.id === saved.id);
+      harnessRecordings.recordings = at >= 0 ? list.map((r, i) => (i === at ? saved : r)) : [...list, saved];
+      harnessEmit("recordings-changed", null);
+      return saved;
+    }
+    case "delete_recording": {
+      const list = harnessRecordings.recordings as { id: string }[];
+      harnessRecordings.recordings = list.filter((r) => r.id !== args?.id);
+      harnessEmit("recordings-changed", null);
+      return true;
+    }
+    case "set_default_recording":
+      harnessRecordings.defaultId = (args?.id as string | null) ?? null;
+      harnessEmit("recordings-changed", null);
+      return null;
+    case "set_account_recording": {
+      const ids = { ...(harnessRecordings.accountIds as Record<string, string>) };
+      if (args?.id) ids[String(args.userId)] = String(args.id);
+      else delete ids[String(args?.userId)];
+      harnessRecordings.accountIds = ids;
+      harnessEmit("recordings-changed", null);
+      return null;
+    }
     // Modo AFK parado, como o backend responde sem sessão. O `[]` do fallback
     // derrubava a página Session (`afkStatus.accounts` não existe num array).
     case "get_afk_mode_status":

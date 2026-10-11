@@ -179,6 +179,25 @@ export const SUITES: Record<string, TestSuite> = {
       "src/afkClickPoint.test.ts",
     ],
   },
+  recordings: {
+    description: "Gravações: biblioteca, passos, qual vale para cada conta, reprodução e o gatilho depois da reconexão",
+    rust: [
+      "recordings_store_tests",
+      "recordings_validation_tests",
+      "recordings_playback_tests",
+      "recordings_after_reconnect_tests",
+      "recordings_afk_mode_tests",
+      // As portas novas do módulo de entrada (press_recording_key, click_recording_point).
+      "win_input_tests",
+      // A reprodução mora na árvore do Modo AFK: a trava continua valendo.
+      "afk_input_safety_tests",
+    ],
+    front: [
+      "src/components/afk-mode/RecordingsTab.test.tsx",
+      "src/recordings.test.ts",
+      "src/components/afk-mode/AfkModeView.test.tsx",
+    ],
+  },
   isolation: {
     description: "Isolamento pré-launch (cache, registro, MachineGuid/MAC)",
     rust: ["win_isolation_tests", "isolation_command_tests"],

@@ -62,8 +62,8 @@ export function normalizeServerScanPages(value: number | undefined): number {
 /** Abas do diálogo do gerador de contas. */
 export type GeneratorDialogTab = "provider" | "signup";
 
-/** Abas do Modo AFK: Auto Rejoin (ciclo de rejoin) e cliques AFK (tecla/clique). */
-export type AfkModeTab = "rejoin" | "clicks";
+/** Abas do Modo AFK: cliques AFK (tecla/clique), Gravações e Auto Rejoin (ciclo de rejoin). */
+export type AfkModeTab = "rejoin" | "clicks" | "recordings";
 
 /**
  * O que está aberto no Modo AFK — `null` com a janela fechada.
