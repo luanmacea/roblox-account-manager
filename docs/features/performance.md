@@ -165,7 +165,54 @@ on launch**. Valem na grade automática do launch e no botão **Arrange in grid*
 | Optimization | `MuteBackgroundClients` | `false` | Fundo mudo (só com a feature `live-audio`, que vai nas duas edições). |
 | General | `GridAllowSmallWindows` | `false` | Célula da grade menor que o mínimo do Roblox. |
 | General | `GridBorderless` | `false` | Janelas da grade sem moldura. |
+| General | `RestoreRobloxSettingsOnExit` | `false` | Devolve ao fechar o app o que o launch mudou nos arquivos do Roblox (ver acima). |
 | Optimization | `{Normal,BottingPlayer,BottingBot}EnableProcessPolicy` e demais | ver [settings.md](settings.md#optimization) | Política de fundo (se ligada) e o estado devolvido ao desligar. |
+
+## Devolver as configurações do Roblox ao fechar (`General.RestoreRobloxSettingsOnExit`)
+
+Ideia 21 (pacote **Conforto**). O launch grava FPS, volume, qualidade, janela
+e FastFlags nos arquivos **do Roblox** — o `GlobalBasicSettings_13.xml` (em
+`%LOCALAPPDATA%\Roblox`) e o `ClientAppSettings.json` da pasta da versão —, e
+o jogo aberto pelo site lê os mesmos. Com a opção "Restore Roblox settings when
+MultiAlt closes" (Settings › Optimization, no cartão dos perfis; **desligada**
+por padrão, só Windows), o app devolve os valores do usuário ao fechar.
+
+- **Onde fica:** [platform/windows/settings_restore.rs](../../src-tauri/src/platform/windows/settings_restore.rs)
+  (anotação, cópia de segurança e devolução), chamado por
+  `patch_client_settings_for_launch` ([launch_shared.rs](../../src-tauri/src/commands/launch_shared.rs))
+  e `cmd_apply_fps_unlock` ([launch.rs](../../src-tauri/src/commands/launch.rs)),
+  e na saída por `restore_roblox_settings_on_exit` ([lib.rs](../../src-tauri/src/lib.rs)).
+- **Anota em volta da escrita:** com a opção ligada, o launch lê os dois
+  arquivos antes (`snapshot_roblox_settings`) e, depois de gravar, anota **por
+  propriedade** o que mudou (`RestoreJournal::record`): o valor de antes da
+  **primeira** mudança e o que o app escreveu por último. No XML contam só as
+  propriedades que o launch escreve (FPS, volume, qualidade, janela); no JSON,
+  as chaves do topo (o `DFIntTaskSchedulerTargetFps`, as FastFlags e o arquivo
+  do "Custom ClientSettings"). A anotação mora em `RobloxSettingsRestore.json`,
+  na pasta de dados, e sobrevive a reabrir o app.
+- **Cópia de segurança:** antes da primeira mudança de cada arquivo, a cópia
+  inteira dele vai para `RobloxSettingsBackup/` na pasta de dados
+  (`0-GlobalBasicSettings_13.xml`, `1-ClientAppSettings.json`…). Fica lá depois
+  da devolução, para recuperar à mão; um ciclo novo começa limpando as cópias
+  do anterior.
+- **Ao fechar** (`ExitRequested`/`Exit`, decidido uma vez só —
+  `settings_on_exit_plan`): sem cliente **que o app abriu** rodando, cada
+  propriedade que ainda tem o valor do app volta ao do usuário (ou some, se não
+  existia); a que mudou depois — o jogador mexeu no jogo — fica. Arquivo que o
+  app criou e ficou vazio é apagado. Com cliente do app rodando, **nada é
+  fechado**: a anotação fica para o próximo fechar (o cliente aberto relê e
+  regrava esses arquivos). Cliente aberto pelo site não segura a devolução.
+- **Desligar a opção** esquece a anotação no próximo fechar, sem mexer nos
+  arquivos. Ligada depois, só conta o que mudar dali em diante.
+- **Convive com o registro das exceções** (`ClientOverrideLedger.json`, o que
+  impede a exceção de uma conta de vazar para a próxima): depois da devolução,
+  os valores anotados lá não batem mais com o arquivo e ele os descarta sozinho.
+- **Nunca** deixa o arquivo como somente-leitura (o que outro gerenciador faz).
+- Testes: `win_settings_restore_tests` (devolve o valor do app, mantém o que o
+  jogador mudou, duas aberturas seguidas, propriedade criada pelo app, FastFlags
+  do usuário ficam, arquivo criado pelo app apagado, cópia antes da primeira
+  mudança — tudo em pastas temporárias) e `settings_on_exit_tests` (devolve só
+  sem cliente do app; desligada, esquece). Interruptor em `settingsTabs.test.tsx`.
 
 ## Testes
 

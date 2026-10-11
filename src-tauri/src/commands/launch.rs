@@ -2402,11 +2402,24 @@ fn cmd_get_roblox_path() -> Result<String, String> {
 }
 
 #[tauri::command]
-fn cmd_apply_fps_unlock(max_fps: u32) -> Result<(), String> {
+fn cmd_apply_fps_unlock(
+    settings: tauri::State<'_, SettingsStore>,
+    max_fps: u32,
+) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
-        return platform::windows::apply_fps_unlock(max_fps);
+        use platform::windows;
+        // Também entra no que é devolvido ao fechar (ideia 21).
+        let snapshot = restore_roblox_settings_enabled(settings.inner())
+            .then(|| windows::snapshot_roblox_settings(windows::roblox_settings_files(None)));
+        let result = windows::apply_fps_unlock(max_fps);
+        if let Some(snapshot) = snapshot {
+            windows::record_roblox_settings_change(snapshot);
+        }
+        return result;
     }
+    #[cfg(not(target_os = "windows"))]
+    let _ = &settings;
     #[cfg(target_os = "macos")]
     {
         return platform::macos::apply_fps_unlock(max_fps);

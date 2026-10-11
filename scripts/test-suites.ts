@@ -466,6 +466,9 @@ export const SUITES: Record<string, TestSuite> = {
       "win_grid_style_tests",
       "win_grid_slot_tests",
       "client_window_plan_tests",
+      // Devolver as configurações do Roblox ao fechar (ideia 21, settings_restore.rs).
+      "win_settings_restore_tests",
+      "settings_on_exit_tests",
     ],
     front: ["src/components/settings/settingsTabs.test.tsx"],
   },

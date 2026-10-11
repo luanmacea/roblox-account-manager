@@ -943,6 +943,27 @@ describe("OptimizationTab", () => {
     expect(screen.queryByText(/Grid options are the same for every profile/)).not.toBeInTheDocument();
   });
 
+  /** Ideia 21: devolver ao fechar o que o launch mudou nos arquivos do Roblox. */
+  it("offers giving the Roblox settings back on close, off by default, and saves it", async () => {
+    renderOptimization({});
+    const toggle = await screen.findByRole("switch", {
+      name: /Restore Roblox settings when MultiAlt closes/,
+    });
+    expect(toggle).toHaveAttribute("aria-checked", "false");
+    expect(screen.getByText(/the game you open from the website/)).toBeInTheDocument();
+
+    await userEvent.click(toggle);
+    await expectSaved("General", "RestoreRobloxSettingsOnExit", "true");
+  });
+
+  it("hides giving the Roblox settings back outside Windows", async () => {
+    renderOptimization({}, "macos");
+    await screen.findByText("Override Window Size");
+    expect(
+      screen.queryByRole("switch", { name: /Restore Roblox settings when MultiAlt closes/ })
+    ).not.toBeInTheDocument();
+  });
+
   it("hides the focus-following optimization outside Windows", async () => {
     renderOptimization({}, "macos");
     await screen.findByText("Override Window Size");

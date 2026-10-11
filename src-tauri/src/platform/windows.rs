@@ -45,6 +45,7 @@ include!("windows/process.rs");
 include!("windows/singleton.rs");
 include!("windows/launch.rs");
 include!("windows/client_settings.rs");
+include!("windows/settings_restore.rs");
 include!("windows/optimization.rs");
 include!("windows/focus_follow.rs");
 include!("windows/live_audio.rs");

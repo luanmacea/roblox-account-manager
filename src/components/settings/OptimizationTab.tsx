@@ -677,6 +677,20 @@ export function OptimizationTab({ s }: { s: UseSettingsReturn }) {
             ? t("These settings apply only to Roblox processes launched by MultiAlt")
             : t("Windows-only process policies are unavailable on this platform")}
         </div>
+        {isWindows ? (
+          // Ideia 21: uma chave só, para todos os perfis. O backend anota o
+          // valor de antes da primeira mudança e devolve ao fechar o app
+          // (platform/windows/settings_restore.rs).
+          <>
+            <Divider />
+            <Toggle
+              checked={s.getBool("General", "RestoreRobloxSettingsOnExit")}
+              onChange={(v) => s.setBool("General", "RestoreRobloxSettingsOnExit", v)}
+              label="Restore Roblox settings when MultiAlt closes"
+              description="Puts back your own FPS, volume, graphics, window and FastFlags when MultiAlt closes and no client it opened is still running, so the game you open from the website is not left with them."
+            />
+          </>
+        ) : null}
         {bottingEnabled ? (
           <>
             <Divider />

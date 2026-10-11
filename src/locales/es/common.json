@@ -2280,5 +2280,7 @@
   "Public server": "Servidor público",
   "Wait while a fullscreen window is in front": "Esperar mientras haya una ventana en pantalla completa delante",
   "Waiting: a fullscreen window is in front": "Esperando: hay una ventana en pantalla completa delante",
-  "With a video or another game in fullscreen in front, the cycle waits instead of taking the focus, for up to 5 minutes past the account's turn.": "Con un video u otro juego en pantalla completa delante, el ciclo espera en lugar de quitar el foco, hasta 5 minutos después del turno de la cuenta."
+  "With a video or another game in fullscreen in front, the cycle waits instead of taking the focus, for up to 5 minutes past the account's turn.": "Con un video u otro juego en pantalla completa delante, el ciclo espera en lugar de quitar el foco, hasta 5 minutos después del turno de la cuenta.",
+  "Puts back your own FPS, volume, graphics, window and FastFlags when MultiAlt closes and no client it opened is still running, so the game you open from the website is not left with them.": "Devuelve tus FPS, volumen, gráficos, ventana y FastFlags cuando MultiAlt se cierra y ningún cliente abierto por él sigue en ejecución, para que el juego que abres desde el sitio no se quede con los valores de la app.",
+  "Restore Roblox settings when MultiAlt closes": "Restaurar la configuración de Roblox al cerrar MultiAlt"
 }
