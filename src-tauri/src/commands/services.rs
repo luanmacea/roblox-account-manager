@@ -332,6 +332,38 @@ fn open_feedback_form(kind: String) -> Result<(), String> {
     open_url_in_browser(&url)
 }
 
+/// O que o resumo do "Reportar problema" (ideia 28) diz sobre o app e o PC.
+/// Nada aqui identifica a pessoa: versão, edição e versão do sistema.
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ReportEnvironment {
+    version: String,
+    edition: &'static str,
+    os: String,
+}
+
+/// O canal de features da build vira o nome que a pessoa vê nas releases.
+fn edition_label(feature_channel: &str) -> &'static str {
+    if feature_channel == "nexus-ws" {
+        "complete"
+    } else {
+        "standard"
+    }
+}
+
+#[tauri::command]
+fn get_report_environment(app: tauri::AppHandle) -> ReportEnvironment {
+    #[cfg(target_os = "windows")]
+    let os = platform::windows::os_version_label();
+    #[cfg(not(target_os = "windows"))]
+    let os = format!("{} {}", std::env::consts::OS, std::env::consts::ARCH);
+    ReportEnvironment {
+        version: app.package_info().version.to_string(),
+        edition: edition_label(RUNNING_FEATURE_CHANNEL),
+        os,
+    }
+}
+
 /// Abre um endereço fixo do app no navegador padrão. No Windows vai por
 /// `cmd /C start`, que trata `&` como separador de comando — por isso só
 /// endereços conferidos nos testes passam por aqui.
@@ -441,6 +473,27 @@ mod services_command_tests {
         for kind in ["", "Bug", "https://evil.example", "bug&calc", "../x"] {
             assert_eq!(feedback_form_url(kind), None, "{kind}");
         }
+    }
+
+    #[test]
+    fn the_report_names_the_edition_like_the_releases_do() {
+        assert_eq!(edition_label("nexus-ws"), "complete");
+        assert_eq!(edition_label("standard"), "standard");
+        assert_eq!(edition_label(""), "standard");
+        assert!(["standard", "complete"].contains(&edition_label(RUNNING_FEATURE_CHANNEL)));
+    }
+
+    #[test]
+    fn the_report_environment_carries_only_version_edition_and_os() {
+        let json = serde_json::to_value(ReportEnvironment {
+            version: "1.2.3".into(),
+            edition: "standard",
+            os: "Windows 11".into(),
+        })
+        .unwrap();
+        let mut keys: Vec<_> = json.as_object().unwrap().keys().cloned().collect();
+        keys.sort();
+        assert_eq!(keys, ["edition", "os", "version"]);
     }
 
     #[test]

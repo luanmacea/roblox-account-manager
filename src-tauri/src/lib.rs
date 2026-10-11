@@ -616,6 +616,7 @@ pub fn run() {
             export_nexus_lua,
             open_repo_url,
             open_feedback_form,
+            get_report_environment,
             sync_windows_navbar_theme,
         ])
         .build(tauri::generate_context!())

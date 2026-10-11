@@ -196,6 +196,9 @@ const baseHandler: InvokeHandler = (cmd, args) => {
       return null;
     // Checagem "o launch não faz nada" (ideia 16): um aviso para a tela ter o
     // que mostrar; a ordem é a do backend.
+    // Resumo do "Reportar problema" (ideia 28).
+    case "get_report_environment":
+      return { version: "0.0.0-harness", edition: "standard", os: "Windows 11 (harness)" };
     case "run_launch_diagnostics":
       return [
         { id: "robloxInstall", status: "ok", reason: "found" },

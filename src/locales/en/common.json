@@ -2317,5 +2317,14 @@
   "The check could not run: {{error}}": "The check could not run: {{error}}",
   "The old Roblox Account Manager is holding Roblox's lock": "The old Roblox Account Manager is holding Roblox's lock",
   "They have had no window for over 2 minutes and can block new launches. If you aren't playing on them, end RobloxPlayerBeta.exe in Task Manager. MultiAlt doesn't close them for you.": "They have had no window for over 2 minutes and can block new launches. If you aren't playing on them, end RobloxPlayerBeta.exe in Task Manager. MultiAlt doesn't close them for you.",
-  "Windows didn't say where local app data lives. Restart the PC and try again.": "Windows didn't say where local app data lives. Restart the PC and try again."
+  "Windows didn't say where local app data lives. Restart the PC and try again.": "Windows didn't say where local app data lives. Restart the PC and try again.",
+  "Add a diagnostic summary": "Add a diagnostic summary",
+  "App version, edition, Windows version, the launch check and the last console lines. Account names, user IDs, cookies, passwords, your Windows user name, server IDs and IP addresses are removed.": "App version, edition, Windows version, the launch check and the last console lines. Account names, user IDs, cookies, passwords, your Windows user name, server IDs and IP addresses are removed.",
+  "Building the summary...": "Building the summary...",
+  "Copied": "Copied",
+  "Copy summary": "Copy summary",
+  "Copy the summary, open the form and paste it into the description. Nothing leaves your PC until you submit the form on GitHub.": "Copy the summary, open the form and paste it into the description. Nothing leaves your PC until you submit the form on GitHub.",
+  "Open the form": "Open the form",
+  "Summary preview": "Summary preview",
+  "This is everything that would go along. Read it before copying.": "This is everything that would go along. Read it before copying."
 }

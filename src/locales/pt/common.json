@@ -2317,5 +2317,14 @@
   "The check could not run: {{error}}": "A checagem não rodou: {{error}}",
   "The old Roblox Account Manager is holding Roblox's lock": "O Roblox Account Manager antigo está segurando a trava do Roblox",
   "They have had no window for over 2 minutes and can block new launches. If you aren't playing on them, end RobloxPlayerBeta.exe in Task Manager. MultiAlt doesn't close them for you.": "Estão há mais de 2 minutos sem janela e podem travar novos launches. Se você não está jogando neles, finalize o RobloxPlayerBeta.exe no Gerenciador de Tarefas. O MultiAlt não fecha por você.",
-  "Windows didn't say where local app data lives. Restart the PC and try again.": "O Windows não informou onde fica a pasta de dados locais. Reinicie o PC e tente de novo."
+  "Windows didn't say where local app data lives. Restart the PC and try again.": "O Windows não informou onde fica a pasta de dados locais. Reinicie o PC e tente de novo.",
+  "Add a diagnostic summary": "Incluir um resumo de diagnóstico",
+  "App version, edition, Windows version, the launch check and the last console lines. Account names, user IDs, cookies, passwords, your Windows user name, server IDs and IP addresses are removed.": "Versão e edição do app, versão do Windows, a checagem do launch e as últimas linhas do Console. Nomes de conta, IDs de usuário, cookies, senhas, seu usuário do Windows, IDs de servidor e endereços IP são removidos.",
+  "Building the summary...": "Montando o resumo...",
+  "Copied": "Copiado",
+  "Copy summary": "Copiar resumo",
+  "Copy the summary, open the form and paste it into the description. Nothing leaves your PC until you submit the form on GitHub.": "Copie o resumo, abra o formulário e cole na descrição. Nada sai do seu PC até você enviar o formulário no GitHub.",
+  "Open the form": "Abrir o formulário",
+  "Summary preview": "Prévia do resumo",
+  "This is everything that would go along. Read it before copying.": "Isto é tudo o que iria junto. Leia antes de copiar."
 }

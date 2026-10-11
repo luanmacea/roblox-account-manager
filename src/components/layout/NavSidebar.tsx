@@ -315,7 +315,11 @@ export function NavSidebar() {
           )}
         </div>
       </div>
-      <FeedbackDialog open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
+      <FeedbackDialog
+        open={feedbackOpen}
+        onClose={() => setFeedbackOpen(false)}
+        reportSource={() => ({ logs: store.launchLogs, accounts: store.accounts })}
+      />
     </nav>
   );
 }
