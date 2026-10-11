@@ -5,6 +5,8 @@ import { SessionPanel } from "../session/SessionPanel";
 import { PageShell } from "./PageShell";
 import { Toggle } from "../ui/Toggle";
 import { isWindowsPlatform } from "../../utils/platform";
+import { MemoryDefaultSelect } from "../session/MemoryLimitControl";
+import { MEMORY_LIMIT_SETTING, memoryLimitChoice } from "../../utils/memoryLimit";
 
 /**
  * Página Session: o Painel de Sessão (o mesmo da aba Console da Choose Game)
@@ -32,6 +34,12 @@ export function SessionPage({ active, onLeave }: { active: boolean; onLeave: () 
 
   const isWindows = isWindowsPlatform(store.platformCapabilities);
   const reconnectDefault = store.settings?.General?.AutoReconnect === "true";
+  // Teto de memória: só com a feature `memory-trim` (edição completa).
+  const memoryTrim = isWindows && store.platformCapabilities?.supportsMemoryTrim === true;
+  const memoryDefaultMb = memoryLimitChoice(
+    undefined,
+    store.settings?.[MEMORY_LIMIT_SETTING.section]?.[MEMORY_LIMIT_SETTING.key]
+  ).defaultMb;
   const bottingOn = store.bottingStatus?.active === true;
   const afkOn = store.afkStatus?.active === true;
   // Reconexão automática em andamento (commands/reconnect.rs).
@@ -125,6 +133,27 @@ export function SessionPage({ active, onLeave }: { active: boolean; onLeave: () 
               {t("Open AFK Mode")}
             </button>
           </section>
+
+          {/* O mesmo `Optimization.MemoryLimit` de Settings › Optimization.
+              Cada conta muda o seu na lista "Em jogo" (SessionPanel). */}
+          {memoryTrim && (
+            <section className="rounded-xl border theme-border px-4 py-3">
+              <h2 className="text-[12px] font-semibold text-[var(--panel-fg)]">{t("Memory limit")}</h2>
+              <p className="mt-1.5 text-[12px] leading-snug text-[var(--panel-muted)]">
+                {t(
+                  "A client over this limit: MultiAlt asks Windows to free its memory first, and closes it only if it stays over and the Watcher's Close If Memory Low is on. Only windows MultiAlt opened; each account can change it in the In game list."
+                )}
+              </p>
+              <div className="mt-2">
+                <MemoryDefaultSelect
+                  valueMb={memoryDefaultMb}
+                  onChange={(mb) =>
+                    void store.updateSetting(MEMORY_LIMIT_SETTING.section, MEMORY_LIMIT_SETTING.key, String(mb))
+                  }
+                />
+              </div>
+            </section>
+          )}
 
           <p className="px-1 text-[11.5px] leading-snug text-[var(--panel-muted)]">
             {t("Closing MultiAlt leaves every Roblox client running.")}

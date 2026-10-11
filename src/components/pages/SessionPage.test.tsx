@@ -228,6 +228,34 @@ describe("SessionPage — summary", () => {
     );
   });
 
+  /** Teto de memória: o padrão de todos os clientes também mora no resumo. */
+  it("sets the memory limit of every client from the summary, off by default", async () => {
+    const user = userEvent.setup();
+    const { store } = renderWithStore(<SessionPage active onLeave={vi.fn()} />, {
+      accounts: ACCOUNTS,
+      launchQueue: null,
+      launchedByProgram: new Set<number>(),
+      platformCapabilities: makePlatformCapabilities({ supportsMemoryTrim: true }),
+      ...storeActions(),
+    });
+    const summary = within(screen.getByRole("complementary", { name: "Summary" }));
+    const select = summary.getByRole("combobox", { name: "Memory limit for every client" }) as HTMLSelectElement;
+    expect(select.value).toBe("0");
+    expect(summary.getByText(/asks Windows to free its memory first/)).toBeInTheDocument();
+    await user.selectOptions(select, "2048");
+    expect(store.updateSetting).toHaveBeenCalledWith("Optimization", "MemoryLimit", "2048");
+  });
+
+  it("has no memory limit in the summary without the memory-trim build", () => {
+    renderWithStore(<SessionPage active onLeave={vi.fn()} />, {
+      accounts: ACCOUNTS,
+      launchQueue: null,
+      launchedByProgram: new Set<number>(),
+      ...storeActions(),
+    });
+    expect(screen.queryByRole("combobox", { name: "Memory limit for every client" })).not.toBeInTheDocument();
+  });
+
   it("has no reconnect default outside Windows", () => {
     renderWithStore(<SessionPage active onLeave={vi.fn()} />, {
       accounts: ACCOUNTS,

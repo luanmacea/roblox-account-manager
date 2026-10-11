@@ -149,6 +149,9 @@ export const SUITES: Record<string, TestSuite> = {
       // Reconexão automática da conta que caiu (commands/reconnect.rs).
       "auto_reconnect_tests",
       "auto_reconnect_target_tests",
+      // Teto de memória que libera RAM antes de fechar (memory_ceiling.rs, memory_trim.rs).
+      "memory_ceiling_tests",
+      "win_memory_trim_tests",
     ],
     // A aba Auto Rejoin do Modo AFK e a moldura (abas, modal) que a abre.
     front: [
@@ -157,6 +160,7 @@ export const SUITES: Record<string, TestSuite> = {
       "src/utils/clientHealth.test.ts",
       "src/components/session/SessionPanel.test.tsx",
       "src/utils/autoReconnect.test.ts",
+      "src/utils/memoryLimit.test.ts",
     ],
   },
   afk: {

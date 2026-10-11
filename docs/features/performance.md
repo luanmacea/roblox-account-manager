@@ -71,9 +71,9 @@ A ideia original reage à troca de foco por `SetWinEventHook`. Aqui não:
 
 ### Fora daqui (de propósito)
 
-- **Teto de memória que pagina em vez de matar** (RobloxKeeper:
-  `EmptyWorkingSet`/`SetProcessWorkingSetSizeEx`): ficou de fora porque nenhuma
-  das duas APIs está no binário hoje.
+- **Teto de memória que pagina em vez de matar** (RobloxKeeper): não mora
+  aqui. Entrou no pacote Conforto, só na edição completa (feature
+  `memory-trim`) — ver [watcher.md](watcher.md#teto-de-memória).
 - Nada de afinidade de CPU, turbo, plano de energia, tarefa agendada ou admin.
 
 ## Volume ao vivo por cliente (`Optimization.MuteBackgroundClients`)

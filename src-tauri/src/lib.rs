@@ -59,6 +59,7 @@ include!("commands/moderation.rs");
 include!("commands/account_check.rs");
 include!("commands/reconnect.rs");
 include!("commands/keep_awake.rs");
+include!("commands/memory_ceiling.rs");
 
 /// O que o app desfaz do Multi Roblox quando fecha.
 #[derive(Debug, PartialEq, Eq)]

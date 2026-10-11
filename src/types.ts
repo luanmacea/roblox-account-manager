@@ -107,6 +107,11 @@ export interface PlatformCapabilities {
   supportsClientSettings: boolean;
   /** Volume ao vivo por cliente: só com a feature `live-audio` no binário. */
   supportsLiveAudio: boolean;
+  /**
+   * Teto de memória que libera RAM antes de fechar o cliente: só com a feature
+   * `memory-trim` no binário (edição completa).
+   */
+  supportsMemoryTrim: boolean;
   reasons: string[];
   warnings: string[];
 }
@@ -438,6 +443,18 @@ export interface CurrentSession {
   sinceMs: number;
   /** Servidor privado/VIP; `null` = não se sabe (aberta pelo site, teleporte). */
   privateServer: boolean | null;
+}
+
+/** Memória e limite de um cliente que o app abriu (`ClientMemoryView`, memory_ceiling.rs). */
+export interface ClientMemory {
+  /** Working set agora, em MB (`null` se não deu para ler). */
+  memoryMb: number | null;
+  /** O limite que vale agora; `null` = sem limite. */
+  limitMb: number | null;
+  /** Acima do limite nesta passada. */
+  over: boolean;
+  /** Quando o app pediu ao Windows para liberar, enquanto acima. */
+  trimmedAtMs: number | null;
 }
 
 export interface ClientHealth {

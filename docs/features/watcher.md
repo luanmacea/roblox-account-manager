@@ -261,6 +261,73 @@ continua sem relançar nada).
 - Testes: `auto_reconnect_tests` (máquina de estados) e
   `auto_reconnect_target_tests` (destino e internet).
 
+## Teto de memória
+
+[memory_ceiling.rs](../../src-tauri/src/commands/memory_ceiling.rs) e
+[platform/windows/memory_trim.rs](../../src-tauri/src/platform/windows/memory_trim.rs).
+Pacote **Conforto** (ver [plano-ideias.md](../plano-ideias.md)). O contrário da
+regra de memória baixa do Watcher: um cliente **que o app abriu** passou de um
+limite de memória — em vez de fechar, o app primeiro pede ao Windows para tirar
+da RAM o que o cliente não está usando agora (as páginas vão para o arquivo de
+paginação e voltam quando o cliente precisar; nada é perdido).
+
+- **Só na edição completa** (feature `memory-trim` do Cargo, dentro do `full`),
+  como o plano das ideias decidiu em 10/10/2026 (pacote 1.7): é uma API nativa
+  nova no binário (`K32EmptyWorkingSet`, do kernel32, a mesma família do
+  `K32GetProcessMemoryInfo` que o Watcher já usa), chamada só de
+  `trim_working_set`. `supportsMemoryTrim` nas capacidades diz à tela; sem a
+  feature, nada do teto aparece e a passada não faz nada. **Passar para a
+  padrão** é pôr `memory-trim` na lista do `standard` do Cargo.toml depois de um
+  `bun run scan --release` limpo nos dois motores.
+- **O limite:** padrão de todas as contas em `Optimization.MemoryLimit` (MB, `0`
+  ou vazio = sem limite, **desligado por padrão**) e, por conta, o campo
+  `MemoryLimit` (`0` = sem limite para esta conta; sem o campo, segue o padrão).
+  Limite aceito entre 256 MB e 64 GB (`parse_memory_limit`, espelhado em
+  `src/utils/memoryLimit.ts`). **A escolha da linha é gravada no campo da conta**
+  (decisão deste pacote): vale na passada seguinte (2 s), sem relançar, e também
+  nos próximos launches da conta.
+- **Onde se muda:**
+  - **por cliente, na página Session** — cada linha da lista **In game** mostra a
+    memória do cliente agora (do mesmo polling de 2,5 s do `get_running_instances`,
+    sem leitura nova) e um seletor compacto: "Default (…)", "No limit", 1 / 1,5 /
+    2 / 3 / 4 GB, o valor próprio da conta e "Custom…" (pergunta em MB ou GB). A
+    memória fica âmbar acima do limite, com o tooltip dizendo que o app pediu para
+    liberar. Com linhas marcadas, a faixa **Memory limit** aplica o mesmo valor a
+    todas as marcadas (ou volta ao padrão), uma conta por vez. Cliente aberto pelo
+    site não tem seletor nem entra no lote;
+  - **o padrão** — no cartão "Memory limit" do resumo da página Session e em
+    Settings › Optimization › "While you play" ("Memory limit per client"),
+    mesma setting.
+- **Quando age** (`memory_ceiling_step`, a cada 2 s no laço do monitor de quedas,
+  funciona **com o Watcher desligado também**):
+  1. cliente aberto há menos de 30 s: nada (carregando, a memória sobe e desce);
+  2. a janela que a pessoa está usando agora: nada (liberar a memória do jogo em
+     uso dá engasgo); o estado fica como estava;
+  3. acima do limite pela primeira vez: **libera** (linha no Console, `step:
+     "memory"`: "Memória em 2500 MB, acima do limite de 2048 MB: pedi ao Windows
+     para liberar");
+  4. voltou para baixo: zera — uma subida mais tarde libera de novo, não fecha;
+  5. ainda acima **60 s depois** de liberar: **fecha só se** o Watcher estiver
+     ligado (`Watcher.Enabled`) **e** a opção de fechar por memória dele
+     (`Watcher.CloseRbxMemory`, "Close If Memory Low") também — é a mesma opção
+     que já fechava por memória baixa, e a descrição dela diz isso agora. Fecha
+     pelo `kill_for_user` do Watcher (só aquele cliente), com toast "Closed …:
+     memory stayed over its limit after it was freed" (evento
+     `roblox-memory-limit`) e linha no Console;
+  6. sem a opção de fechar: libera de novo a cada minuto, e nunca fecha.
+- **Nunca toca** cliente aberto pelo site (adotado), cliente de outra conta, nem
+  PID que não é mais do cliente rastreado (o fechar é o `kill_for_user`, que
+  confere se o PID ainda é um Roblox).
+- Testes: `memory_ceiling_tests` (limite da conta x padrão, `0`/off, faixa,
+  carência, liberar → esperar → fechar, sem a opção de fechar, voltar para baixo,
+  janela em uso, monitor com dublê do sistema, PID novo da mesma conta, linha do
+  Console, visão em camelCase), `win_memory_trim_tests` (PID 0, API só no
+  `memory_trim.rs` e atrás da feature), `platform_info_tests`
+  (`supportsMemoryTrim`), `memoryLimit.test.ts`, `SessionPanel.test.tsx`
+  ("limite de memória por cliente": seletor, campo gravado, padrão, custom, âmbar,
+  site sem seletor, sem a feature, lote), `SessionPage.test.tsx` e
+  `settingsTabs.test.tsx` (o padrão).
+
 ## Configurações relacionadas
 
 Seção `[Watcher]`:
@@ -270,7 +337,7 @@ Seção `[Watcher]`:
 | `Enabled` | `false` | — | Frontend inicia/para o watcher |
 | `ScanInterval` | `6` (s) | 1–3600 | Intervalo de varredura |
 | `ReadInterval` | `250` (ms) | 50–60000 | Só macOS: leitura de logs |
-| `CloseRbxMemory` | `false` | — | Liga a regra de memória baixa |
+| `CloseRbxMemory` | `false` | — | Liga a regra de memória baixa; com o [teto de memória](#teto-de-memória), também fecha o cliente que continua acima do limite depois de liberar |
 | `MemoryLowValue` | `200` (MB) | 1–16384 | Limite inferior de working set |
 | `CloseRbxWindowTitle` | `false` | — | Liga a regra de título |
 | `ExpectedWindowTitle` | `Roblox` | — | Título esperado exato |

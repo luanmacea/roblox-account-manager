@@ -50,6 +50,7 @@ include!("windows/optimization.rs");
 include!("windows/focus_follow.rs");
 include!("windows/live_audio.rs");
 include!("windows/windowing.rs");
+include!("windows/memory_trim.rs");
 include!("windows/input.rs");
 include!("windows/tracker.rs");
 include!("windows/isolation.rs");

@@ -114,6 +114,7 @@ export function makePlatformCapabilities(
     supportsUpdater: true,
     supportsClientSettings: true,
     supportsLiveAudio: false,
+    supportsMemoryTrim: false,
     reasons: [],
     warnings: [],
     ...overrides,
@@ -224,6 +225,7 @@ export function createStoreValue(overrides: Partial<StoreValue> = {}): StoreValu
     adoptedClients: new Set<number>(),
     unidentifiedClients: [],
     clientHealth: new Map(),
+    clientMemory: new Map(),
     identifyExternalClient: vi.fn(async () => true),
     focusClientWindow: vi.fn(async () => true),
 

@@ -885,6 +885,24 @@ describe("OptimizationTab", () => {
     await expectSaved("Optimization", "MuteBackgroundClients", "true");
   });
 
+  /** Teto de memória: o padrão de todos os clientes, só com a feature `memory-trim`. */
+  it("offers the memory limit per client only when the build can free memory", async () => {
+    stored = {};
+    setStore({
+      platformCapabilities: { os: "windows", supportsMemoryTrim: true } as PlatformCapabilities,
+    });
+    renderTab((s) => <OptimizationTab s={s} />);
+    const field = await screen.findByLabelText("Memory limit per client");
+    expect(field).toHaveValue("0");
+    expect(screen.getByText(/asks Windows to free the client's memory first/)).toBeInTheDocument();
+  });
+
+  it("hides the memory limit when the build cannot free memory", async () => {
+    renderOptimization({});
+    await screen.findByRole("switch", { name: /Follow the window in use/ });
+    expect(screen.queryByLabelText("Memory limit per client")).not.toBeInTheDocument();
+  });
+
   it("hides the mute option when the build has no live audio", async () => {
     renderOptimization({});
     await screen.findByRole("switch", { name: /Follow the window in use/ });

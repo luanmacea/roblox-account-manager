@@ -1079,6 +1079,167 @@ describe("SessionPanel — reconexão por conta", () => {
 });
 
 /**
+ * Teto de memória por cliente, na lista "Em jogo" (commands/memory_ceiling.rs).
+ * A linha mostra a memória do cliente (do polling de 2,5 s) e um seletor de
+ * limite que grava o campo `MemoryLimit` da conta (vale na hora e nos próximos
+ * launches); sem campo, vale `Optimization.MemoryLimit`. Só cliente que o app
+ * abriu, e só com a feature `memory-trim` no binário.
+ */
+describe("SessionPanel — limite de memória por cliente", () => {
+  const TRIM = makePlatformCapabilities({ supportsMemoryTrim: true });
+
+  function renderRunning(overrides: Partial<StoreValue> = {}, accounts: Account[] = ACCOUNTS) {
+    return renderWithStore(<SessionPanel />, {
+      accounts,
+      launchedByProgram: new Set(accounts.map((a) => a.UserID)),
+      platformCapabilities: TRIM,
+      ...storeActions(),
+      ...overrides,
+    });
+  }
+
+  function savedAccounts(store: StoreValue): Account[] {
+    return (store.updateAccount as unknown as { mock: { calls: [Account][] } }).mock.calls.map((c) => c[0]);
+  }
+
+  function clearSaved(store: StoreValue) {
+    (store.updateAccount as unknown as { mockClear: () => void }).mockClear();
+  }
+
+  function limitSelect(name: string) {
+    return screen.getByRole("combobox", { name: `Memory limit for ${name}` }) as HTMLSelectElement;
+  }
+
+  beforeEach(() => {
+    setInvokeMap({ get_nexus_accounts: [] });
+  });
+
+  it("shows the client's memory and follows the default until the account picks its own", () => {
+    renderRunning({
+      settings: { Optimization: { MemoryLimit: "2048" } },
+      clientMemory: new Map([[1, { memoryMb: 1250, limitMb: 2048, over: false, trimmedAtMs: null }]]),
+    });
+    const row = screen.getByTestId("session-running-1");
+    expect(within(row).getByText("1.2 GB")).toBeInTheDocument();
+    const select = limitSelect("alpha");
+    expect(select.value).toBe("default");
+    expect(within(select).getByRole("option", { name: "Default (2 GB)" })).toBeInTheDocument();
+    expect(select).toHaveAttribute("title", expect.stringMatching(/Following the default/));
+  });
+
+  it("says when there is no default limit", () => {
+    renderRunning();
+    expect(within(limitSelect("alpha")).getByRole("option", { name: "Default (no limit)" })).toBeInTheDocument();
+  });
+
+  it("picking a size writes the account field and keeps the other fields, closing nothing", async () => {
+    const accounts = [makeAccount({ UserID: 1, Username: "alpha", Fields: { RobloxVersion: "LIVE:abc" } })];
+    const { store } = renderRunning({}, accounts);
+    await userEvent.selectOptions(limitSelect("alpha"), "2048");
+    const [saved] = savedAccounts(store);
+    expect(saved.Fields.MemoryLimit).toBe("2048");
+    expect(saved.Fields.RobloxVersion).toBe("LIVE:abc");
+    expect(callsFor("cmd_kill_roblox")).toHaveLength(0);
+  });
+
+  it("no limit is its own choice, and default removes the field", async () => {
+    const accounts = [makeAccount({ UserID: 1, Username: "alpha", Fields: { MemoryLimit: "1536" } })];
+    const { store } = renderRunning({ settings: { Optimization: { MemoryLimit: "2048" } } }, accounts);
+    expect(limitSelect("alpha").value).toBe("1536");
+    await userEvent.selectOptions(limitSelect("alpha"), "0");
+    expect(savedAccounts(store)[0].Fields.MemoryLimit).toBe("0");
+    clearSaved(store);
+    await userEvent.selectOptions(limitSelect("alpha"), "default");
+    expect(savedAccounts(store)[0].Fields).not.toHaveProperty("MemoryLimit");
+  });
+
+  it("a custom size is asked for, in MB or GB", async () => {
+    const accounts = [makeAccount({ UserID: 1, Username: "alpha" })];
+    const { store } = renderRunning({}, accounts);
+    promptAnswers.prompt = "2.5 GB";
+    await userEvent.selectOptions(limitSelect("alpha"), "custom");
+    expect(savedAccounts(store)[0].Fields.MemoryLimit).toBe("2560");
+  });
+
+  it("a cancelled or unreadable custom size saves nothing", async () => {
+    const accounts = [makeAccount({ UserID: 1, Username: "alpha" })];
+    const { store } = renderRunning({}, accounts);
+    promptAnswers.prompt = null;
+    await userEvent.selectOptions(limitSelect("alpha"), "custom");
+    promptAnswers.prompt = "lots";
+    await userEvent.selectOptions(limitSelect("alpha"), "custom");
+    expect(savedAccounts(store)).toHaveLength(0);
+    expect(limitSelect("alpha").value).toBe("default");
+  });
+
+  it("a custom size already saved shows up as its own option", () => {
+    renderRunning({}, [makeAccount({ UserID: 1, Username: "alpha", Fields: { MemoryLimit: "1800" } })]);
+    const select = limitSelect("alpha");
+    expect(select.value).toBe("1800");
+    expect(within(select).getByRole("option", { name: "1.8 GB" })).toBeInTheDocument();
+  });
+
+  it("over the limit, the memory is highlighted and says the memory was freed", () => {
+    renderRunning({
+      clientMemory: new Map([[1, { memoryMb: 2500, limitMb: 2048, over: true, trimmedAtMs: 1 }]]),
+    });
+    const reading = within(screen.getByTestId("session-running-1")).getByText("2.4 GB");
+    expect(reading.className).toMatch(/amber/);
+    expect(reading).toHaveAttribute(
+      "title",
+      "Over its limit of 2 GB: MultiAlt asked Windows to free this client's memory."
+    );
+  });
+
+  it("a client opened from the website has no limit control", () => {
+    renderRunning({ adoptedClients: new Set([3]) });
+    expect(screen.queryByRole("combobox", { name: "Memory limit for charlie" })).not.toBeInTheDocument();
+    expect(limitSelect("alpha")).toBeInTheDocument();
+  });
+
+  it("without the memory-trim build there is no memory control at all", async () => {
+    renderRunning({
+      platformCapabilities: makePlatformCapabilities({ supportsMemoryTrim: false }),
+      clientMemory: new Map([[1, { memoryMb: 1250, limitMb: null, over: false, trimmedAtMs: null }]]),
+    });
+    expect(screen.queryByRole("combobox", { name: /Memory limit for/ })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select alpha" }));
+    expect(screen.queryByTestId("session-memory-bulk")).not.toBeInTheDocument();
+  });
+
+  it("bulk: the checked rows get the same limit, or go back to the default", async () => {
+    const accounts = [
+      makeAccount({ UserID: 1, Username: "alpha", Fields: { MemoryLimit: "1024" } }),
+      makeAccount({ UserID: 2, Username: "bravo" }),
+      makeAccount({ UserID: 3, Username: "charlie" }),
+    ];
+    const { store } = renderRunning({}, accounts);
+    expect(screen.queryByTestId("session-memory-bulk")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select alpha" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select bravo" }));
+
+    const bulk = screen.getByRole("combobox", { name: "Memory limit for 2 selected" });
+    await userEvent.selectOptions(bulk, "3072");
+    expect(savedAccounts(store).map((a) => [a.UserID, a.Fields.MemoryLimit])).toEqual([
+      [1, "3072"],
+      [2, "3072"],
+    ]);
+
+    clearSaved(store);
+    await userEvent.selectOptions(bulk, "default");
+    expect(savedAccounts(store).every((a) => !("MemoryLimit" in a.Fields))).toBe(true);
+    expect(callsFor("cmd_kill_roblox")).toHaveLength(0);
+  });
+
+  it("bulk skips the clients opened from the website", async () => {
+    const { store } = renderRunning({ adoptedClients: new Set([3]) });
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select all running clients" }));
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Memory limit for 2 selected" }), "2048");
+    expect(savedAccounts(store).map((a) => a.UserID)).toEqual([1, 2]);
+  });
+});
+
+/**
  * Sessão de agora em cada linha do "Em jogo": jogo, tipo de servidor, tempo em
  * jogo (andando) e estado. O início é o mesmo que o histórico grava
  * (`get_current_sessions`, commands/session_history.rs); a tela relê no
