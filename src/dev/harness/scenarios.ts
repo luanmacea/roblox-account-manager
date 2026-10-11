@@ -194,6 +194,17 @@ const baseHandler: InvokeHandler = (cmd, args) => {
       return null;
     case "get_theme":
       return null;
+    // Checagem "o launch não faz nada" (ideia 16): um aviso para a tela ter o
+    // que mostrar; a ordem é a do backend.
+    case "run_launch_diagnostics":
+      return [
+        { id: "robloxInstall", status: "ok", reason: "found" },
+        { id: "dataFolder", status: "ok", reason: "writable" },
+        { id: "versionsFolder", status: "ok", reason: "writable" },
+        { id: "internet", status: "ok", reason: "reachable" },
+        { id: "stuckProcesses", status: "warn", reason: "stuck", count: 1 },
+        { id: "multiRoblox", status: "ok", reason: "held" },
+      ];
     // Favoritos e recentes (`RAMGameLists.json`). Começa sem arquivo (`null`):
     // a UI migra o que o `localStorage` tem — inclusive o que `seedTourStorage`
     // semeou — e as gravações ficam em memória. Cair no `[]` do fallback seria

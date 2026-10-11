@@ -28,6 +28,7 @@ import { UpdateDialog } from "./components/dialogs/UpdateDialog";
 import { AfkModeDialog } from "./components/afk-mode/AfkModeDialog";
 import { GeneratorDialog } from "./components/dialogs/GeneratorDialog";
 import { VersionsDialog } from "./components/dialogs/VersionsDialog";
+import { DiagnosticsDialog } from "./components/dialogs/DiagnosticsDialog";
 import { PresetsDialog } from "./components/presets/PresetsDialog";
 import { IsolationProgressOverlay } from "./components/IsolationProgressOverlay";
 import { SessionPage } from "./components/pages/SessionPage";
@@ -68,6 +69,7 @@ function AppContent() {
     !!store.afkModeDialog ||
     store.generatorDialogOpen ||
     store.updateDialogOpen ||
+    store.diagnosticsOpen ||
     store.presetsDialog !== null ||
     store.firstRunWalkthroughOpen ||
     !!store.modal;
@@ -183,6 +185,16 @@ function AppContent() {
                     {t("Open launch log")}
                   </button>
                 )}
+                {/* "O launch não faz nada" (ideia 16): a checagem só lê, então
+                    pode ficar a um clique de qualquer erro de launch. */}
+                {hasLaunchLog && (
+                  <button
+                    onClick={() => store.setDiagnosticsOpen(true)}
+                    className="px-2 py-1 rounded-md bg-red-500/10 border border-red-500/30 text-red-300 hover:bg-red-500/20 transition-colors"
+                  >
+                    {t("Check what's wrong")}
+                  </button>
+                )}
                 <button
                   onClick={() => store.setError(null)}
                   className="text-red-500/60 hover:text-red-400 transition-colors"
@@ -292,6 +304,8 @@ function AppContent() {
         open={store.versionsDialogOpen}
         onClose={() => store.setVersionsDialogOpen(false)}
       />
+
+      <DiagnosticsDialog open={store.diagnosticsOpen} onClose={() => store.setDiagnosticsOpen(false)} />
 
       <PresetsDialog />
 

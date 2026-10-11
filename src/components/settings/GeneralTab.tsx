@@ -198,6 +198,25 @@ export function GeneralTab({ s }: { s: UseSettingsReturn }) {
         </div>
       </div>
 
+      {/* Ideia 16: a mesma checagem que a faixa de erro do launch abre. */}
+      <div className="px-1 py-3">
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-zinc-800/70 bg-zinc-900/35 px-3 py-2">
+          <div className="min-w-0">
+            <div className="text-[13px] text-zinc-200">{t("Launch does nothing?")}</div>
+            <div className="mt-0.5 text-[12px] text-zinc-500">
+              {t("Checks Roblox, folders, internet, stuck Roblox processes and Multi Roblox. It never closes anything.")}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => store.setDiagnosticsOpen(true)}
+            className="shrink-0 rounded-lg border border-zinc-700/70 bg-zinc-800 px-3 py-1.5 text-[12px] font-medium text-zinc-200 transition-colors hover:bg-zinc-700"
+          >
+            {t("Run check")}
+          </button>
+        </div>
+      </div>
+
       <div className="px-1 py-3">
         <div className="flex items-center justify-between gap-3 rounded-lg border border-zinc-800/70 bg-zinc-900/35 px-3 py-2">
           <div className="min-w-0">

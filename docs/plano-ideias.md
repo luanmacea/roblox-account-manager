@@ -38,6 +38,7 @@ de subir a próxima:
 | 1.4 | **Reconexão** (2, 14, 23) — inclui a 1.3 | branch `feature/reconexao` (sai da `feature/quedas`) | — | API nativa nova (`SetThreadExecutionState`); falta teste do dono com cliente real |
 | 1.5 | **Desempenho** (18, 20, 22) — inclui a 1.3 e a 1.4 | branch `feature/desempenho` (recebeu a `feature/reconexao`) | — | tudo opcional e desligado; volume ao vivo (20) nas duas edições (feature `live-audio`, dentro do `standard`); falta teste do dono com cliente real ([performance.md](features/performance.md)) |
 | 1.6 | **Organização** (13, 6) — inclui a 1.3, 1.4 e 1.5 | branch `feature/organizacao` (recebeu a `feature/desempenho`) | — | presets com horário e histórico de sessões; sem API nativa nova; falta teste do dono com cliente real ([presets.md](features/presets.md), [history.md](features/history.md)) |
+| a definir | **Suporte** (16, 28, 27, 12, 3) — inclui a 1.3 a 1.6 | branch `feature/suporte` (sai da `feature/organizacao`) | — | checagem "o launch não faz nada", reportar problema com resumo anonimizado, trancar por inatividade, Quick Login e a reserva experimental do singleton (desligada; precisa de teste do dono teleportando) — ver [support.md](features/support.md) |
 
 ## Pacotes
 
@@ -48,10 +49,11 @@ de subir a próxima:
 | 1.4 | **Conta** | 8, 10, 26, 7, 9 | Leituras simples e baratas, sem código nativo novo. |
 | 1.5 | **Desempenho** | 18, 20, 22 | Otimização que segue o foco, volume ao vivo, grade menor. Mexe com APIs nativas: precisa de cuidado com antivírus. |
 | 1.6 | **Organização** | 13, 6 | Presets/agendamento e histórico de sessões. |
+| a definir | **Suporte** | 16, 28, 27, 12, 3 | Ferramentas para quando algo dá errado (checagem do launch, relato anonimizado), proteção do app (trancar por inatividade), conta por Quick Login sem colar cookie, e a reserva do singleton como experimento desligado. |
 | 1.7 | **Edição completa** | 20, memória, 15 | Decisão do dono (10/10/2026): a edição padrão sai sem nenhum alerta; o que um scanner marca vai para a completa (só no GitHub). O volume ao vivo (20) já vai na completa desde a 1.5 (feature `live-audio` no `full`); entram o teto de memória que libera RAM em vez de fechar o cliente e a conferência da assinatura do Roblox (15), mais o que fizer o exe padrão ser marcado desde o Quedas. |
 | 1.8 | **Gravações** (completa) | — | Pedido do dono (10/10/2026): grava uma vez (teclas, cliques e esperas numa janela; o Roblox só aceita entrada na janela em foco, então espelhar ao vivo não dá) e o app reproduz, uma janela por vez. **Quando roda:** depois da reconexão (a conta voltou e passou o tempo configurado no jogo — só nela, para reposicionar) e no modo AFK (com intervalo entre uma execução e outra). **Biblioteca:** lista das gravações salvas para reusar, renomear e apagar. **Qual roda:** uma gravação para todas as contas ou uma por conta, que vence a geral. Gravar lê teclado e mouse: só na completa; reproduzir passa pelo mesmo ponto único de envio do AFK. |
-| depois | — | 24, 25, 27, 28, 21, 30 | Bons, sem urgência. A 30 (Mac) depende de alguém testar num Mac. |
-| teste | **Multi Roblox** | 3 | Ver abaixo: pode até **reduzir** o risco de antivírus. Só com teste real. |
+| depois | — | 24, 25, 21, 30 | Bons, sem urgência. A 30 (Mac) depende de alguém testar num Mac. |
+| teste | **Multi Roblox** | 3 | Ver abaixo: pode até **reduzir** o risco de antivírus. Só com teste real. Entrou no pacote Suporte como opção experimental **desligada**; o método atual continua o padrão. |
 
 ## Respostas às dúvidas do dono
 

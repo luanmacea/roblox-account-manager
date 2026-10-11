@@ -71,6 +71,7 @@ Cada documento de funcionalidade segue a mesma estrutura: **Objetivo**, **Onde f
 - [features/settings.md](features/settings.md) — abas de configuração e chaves do `RAMSettings.ini`.
 - [features/ui-layout.md](features/ui-layout.md) — shell da UI, temas/fontes, diálogos, lista de contas, barra de ações, tela "Choose Game".
 - [features/webview-recovery.md](features/webview-recovery.md) — janela abrindo em branco/preta: safe mode de vídeo do WebView2, marcador preso à versão do runtime e tela de erro do React.
+- [features/support.md](features/support.md) — pacote Suporte: checagem "o launch não faz nada" (só lê, nunca fecha nada).
 
 ## Registro de mudanças (2026-09-27)
 

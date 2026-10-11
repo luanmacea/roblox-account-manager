@@ -339,6 +339,8 @@ export function createStoreValue(overrides: Partial<StoreValue> = {}): StoreValu
     generatorStatus: null,
     versionsDialogOpen: false,
     setVersionsDialogOpen: vi.fn(),
+    diagnosticsOpen: false,
+    setDiagnosticsOpen: vi.fn(),
     setAfkDialogOpen: vi.fn(),
     setAvatarsDialogOpen: vi.fn(),
     refreshAvatarHeadshots: vi.fn(async () => {}),

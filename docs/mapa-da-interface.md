@@ -156,6 +156,7 @@ Seções numa lista vertical à esquerda. As mais úteis no dia a dia:
 | `Roblox Versions` | Add ▾ ou Settings › Versions | Instala, rotula e remove versões do cliente; `Browse` lista o catálogo remoto. |
 | `Backups` | Settings › Backups | Cópia de contas, settings, scripts e temas; restaura com backup de segurança automático. |
 | `Theme Editor` | toolbar | Cores, estilo de botão e fontes; presets exportáveis. |
+| `Launch check` | Settings › General › `Launch does nothing?` ou o botão `Check what's wrong` da faixa de erro do launch | Confere Roblox instalado, pastas graváveis, internet até o Roblox, processos do Roblox sem janela e o Multi Roblox; cada linha diz o que fazer. **Só olha**: nunca fecha nada. Ver [support.md](features/support.md). |
 | `Session` | toolbar | Fila de lançamento (cancelar), clientes abertos (focar, fechar; cada conta com o jogo, servidor público/privado, tempo em jogo e estado — jogando, caiu, reconectando, não responde) e reconexão automática: padrão `Reconnect accounts that drop` no resumo, chave por conta em cada linha de `In game` e, com linhas marcadas, `Reconnect on` / `Reconnect off` / `Use default`. |
 
 ---

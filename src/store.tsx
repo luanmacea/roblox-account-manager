@@ -682,6 +682,9 @@ export interface StoreValue {
   generatorStatus: GeneratorStatus | null;
   versionsDialogOpen: boolean;
   setVersionsDialogOpen: (open: boolean) => void;
+  /** Checagem "o launch não faz nada" (ideia 16) — Settings e a faixa de erro. */
+  diagnosticsOpen: boolean;
+  setDiagnosticsOpen: (open: boolean) => void;
   /** Abre (ou fecha) o Modo AFK na aba de cliques AFK — o atalho da barra. */
   setAfkDialogOpen: (open: boolean) => void;
   setAvatarsDialogOpen: (open: boolean) => void;
@@ -893,6 +896,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, []);
   const [generatorStatus, setGeneratorStatus] = useState<GeneratorStatus | null>(null);
   const [versionsDialogOpen, setVersionsDialogOpen] = useState(false);
+  const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const [presetsDialog, setPresetsDialog] = useState<{ draft: LaunchPreset | null } | null>(null);
   const [presetsRevision, setPresetsRevision] = useState(0);
   const openPresetsDialog = useCallback((draft?: LaunchPreset | null) => {
@@ -3560,6 +3564,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     generatorStatus,
     versionsDialogOpen,
     setVersionsDialogOpen,
+    diagnosticsOpen,
+    setDiagnosticsOpen,
     setSessionDialogOpen,
     setDefaultVersion,
     missingAssets,

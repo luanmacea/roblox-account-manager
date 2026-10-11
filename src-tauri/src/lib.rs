@@ -560,6 +560,7 @@ pub fn run() {
             cmd_apply_fps_unlock,
             kill_legacy_ram_processes,
             diagnose_mutex_holder,
+            run_launch_diagnostics,
             get_platform_capabilities,
             isolation_get_status,
             isolation_save,

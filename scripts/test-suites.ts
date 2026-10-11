@@ -455,6 +455,15 @@ export const SUITES: Record<string, TestSuite> = {
     ],
     front: ["src/utils/platform.test.ts"],
   },
+  support: {
+    description: "Pacote Suporte: checagem \"o launch não faz nada\" (16), reportar problema com resumo anonimizado (28), trancar por inatividade (27), Quick Login (12) e reserva do singleton do Roblox (3)",
+    rust: ["launch_diagnostics_tests"],
+    front: [
+      "src/utils/diagnostics.test.ts",
+      "src/components/dialogs/DiagnosticsDialog.test.tsx",
+      "src/App.test.tsx",
+    ],
+  },
   performance: {
     description: "Desempenho enquanto joga: otimização que segue a janela em uso, fundo mudo (live-audio), grade menor e sem moldura",
     rust: [
