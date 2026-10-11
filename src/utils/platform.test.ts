@@ -18,6 +18,7 @@ function caps(os: string): PlatformCapabilities {
     supportsUpdater: true,
     supportsClientSettings: true,
     supportsLiveAudio: false,
+    supportsMemoryTrim: false,
     reasons: [],
     warnings: [],
   };

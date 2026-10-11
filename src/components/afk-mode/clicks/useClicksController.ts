@@ -10,6 +10,9 @@ import {
 } from "../../../afkClickPoint";
 import { useTr } from "../../../i18n/text";
 import { useAccountLabel } from "../../../hooks/useAccountLabel";
+import { useRecordings } from "../recordings/useRecordings";
+import { recordingForAccount } from "../../../recordings";
+import { recordingErrorText } from "../RecordingsTab";
 
 /**
  * Tempo até o próximo envio, no formato `m:ss` — nunca acima do intervalo.
@@ -41,6 +44,11 @@ export function formatAfkElapsed(startedAtMs: number | null, nowMs: number): str
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
+/** O modo do INI ou da sessão; valor desconhecido é tecla, como no backend. */
+export function parseAfkMode(raw: string | undefined | null): AfkMode {
+  return raw === "click" ? "click" : raw === "recording" ? "recording" : "key";
 }
 
 /** Piso do intervalo, o mesmo do `clamp_afk_interval_seconds` do backend. */
@@ -81,6 +89,7 @@ export function useClicksController({ targetUserIds }: ClicksTabOptions = {}) {
   const t = useTr();
   const store = useStore();
   const accountLabel = useAccountLabel();
+  const { payload: recordings } = useRecordings();
 
   const status = store.afkStatus;
   const running = status?.active === true;
@@ -91,6 +100,8 @@ export function useClicksController({ targetUserIds }: ClicksTabOptions = {}) {
   // Quem abriu pelo "Em jogo" já traz as contas marcadas.
   const [draftUserIds, setDraftUserIds] = useState<number[]>(() => targetUserIds ?? []);
   const [beepOnCycle, setBeepOnCycle] = useState(false);
+  // Ligado por padrão: só `"false"` no INI desliga (`afk_wait_for_fullscreen_enabled`).
+  const [waitForFullscreen, setWaitForFullscreen] = useState(true);
   const [busy, setBusy] = useState(false);
   const [sendingNow, setSendingNow] = useState(false);
   const [nowMs, setNowMs] = useState(() => Date.now());
@@ -117,7 +128,8 @@ export function useClicksController({ targetUserIds }: ClicksTabOptions = {}) {
     setIntervalSecondsPart(interval.seconds);
     setKey(afk.Key || "");
     setBeepOnCycle(afk.BeepOnCycle === "true");
-    setMode(afk.Mode === "click" ? "click" : "key");
+    setMode(parseAfkMode(afk.Mode));
+    setWaitForFullscreen(afk.WaitForFullscreen !== "false");
     setDefaultPoint(readAfkSettingsPoint(afk));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -130,11 +142,12 @@ export function useClicksController({ targetUserIds }: ClicksTabOptions = {}) {
     ? status?.intervalSeconds ?? 0
     : intervalMinutes * 60 + intervalSecondsPart;
   const intervalTooShort = !running && effectiveInterval < AFK_MIN_INTERVAL_SECONDS;
-  const effectiveMode: AfkMode = running ? (status?.mode === "click" ? "click" : "key") : mode;
+  const effectiveMode: AfkMode = running ? parseAfkMode(status?.mode) : mode;
   const effectivePoint: AfkPoint = running
     ? { x: clampAfkPercent(status?.clickX ?? 50), y: clampAfkPercent(status?.clickY ?? 50) }
     : defaultPoint;
   const clickMode = effectiveMode === "click";
+  const recordingMode = effectiveMode === "recording";
 
   // O tique não depende de `running`: o tempo decorrido tem de andar sempre que
   // existe sessão, inclusive no intervalo em que a tela ainda não recebeu o
@@ -173,8 +186,17 @@ export function useClicksController({ targetUserIds }: ClicksTabOptions = {}) {
 
   const focusDenied = (status?.accounts ?? []).some((a) => a.lastErrorCode === "focusDenied");
   const keyAllowed = store.afkKeys.includes(effectiveKey);
-  /** O modo clique não usa tecla; o modo tecla não liga sem uma da lista. */
-  const sendReady = clickMode || keyAllowed;
+  /** A gravação que cada conta toca no modo gravação (a própria ou a de todas). */
+  function recordingNameFor(userId: number): string | null {
+    const rec = recordingForAccount(recordings, userId);
+    return rec && rec.steps.length > 0 ? rec.name : null;
+  }
+  const anyRecording = inAfk.some((id) => recordingNameFor(id) !== null);
+  /**
+   * O modo clique não usa tecla; o modo tecla não liga sem uma da lista; o modo
+   * gravação precisa de pelo menos uma conta marcada com gravação para tocar.
+   */
+  const sendReady = clickMode || (recordingMode ? running || anyRecording : keyAllowed);
   const canStart = sendReady && inAfk.length > 0 && !intervalTooShort && !busy;
   const statusByUserId = useMemo(
     () => new Map((status?.accounts ?? []).map((a) => [a.userId, a])),
@@ -185,6 +207,10 @@ export function useClicksController({ targetUserIds }: ClicksTabOptions = {}) {
   /** A frase que explica por que uma conta não recebeu a tecla. */
   function sendErrorText(code: string | null, raw: string | null, name: string): string {
     switch (code) {
+      case "noRecording":
+      case "focusLost":
+      case "stopped":
+        return recordingErrorText(t, code, raw, name);
       case "focusDenied":
         return t(
           "{{name}}: Windows did not let this account's window come to the front, so nothing was sent.",
@@ -321,6 +347,16 @@ export function useClicksController({ targetUserIds }: ClicksTabOptions = {}) {
     setSendingNow(true);
     try {
       const sent = await store.afkTriggerNow(inAfk);
+      if (recordingMode) {
+        store.addToast(
+          sent === 1
+            ? t("Played on 1 account")
+            : sent > 1
+              ? t("Played on {{count}} accounts", { count: sent })
+              : t("The recording did not play on any window")
+        );
+        return;
+      }
       if (clickMode) {
         store.addToast(
           sent === 1
@@ -364,7 +400,9 @@ export function useClicksController({ targetUserIds }: ClicksTabOptions = {}) {
       : intervalTooShort
         ? t("At least 5 seconds.")
         : !sendReady
-          ? t("Pick a key to send")
+          ? recordingMode
+            ? t("None of the ticked accounts has a recording to play")
+            : t("Pick a key to send")
           : inAfk.length === 0
             ? t("Tick at least one account")
             : null;
@@ -388,7 +426,12 @@ export function useClicksController({ targetUserIds }: ClicksTabOptions = {}) {
     effectiveMode,
     effectivePoint,
     clickMode,
+    recordingMode,
+    recordingNameFor,
     beepOnCycle,
+    waitForFullscreen,
+    /** O ciclo está segurado por uma janela em tela cheia na frente. */
+    waitingFullscreen: running && status?.waitingFullscreen === true,
     inAfk,
     candidates,
     focusDenied,
@@ -412,6 +455,11 @@ export function useClicksController({ targetUserIds }: ClicksTabOptions = {}) {
     setBeepOnCycle: (v: boolean) => {
       setBeepOnCycle(v);
       persist("BeepOnCycle", v ? "true" : "false");
+    },
+    // O backend relê a cada tique: vale com o modo ligado, sem religar.
+    setWaitForFullscreen: (v: boolean) => {
+      setWaitForFullscreen(v);
+      persist("WaitForFullscreen", v ? "true" : "false");
     },
     persist,
     sendErrorText,

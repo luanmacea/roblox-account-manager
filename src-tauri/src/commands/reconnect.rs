@@ -815,6 +815,11 @@ static RECONNECT_LAST_VIEWS: std::sync::LazyLock<std::sync::Mutex<Vec<ReconnectE
 
 fn publish_reconnect(app: &tauri::AppHandle, notices: &[ReconnectNotice]) {
     for notice in notices {
+        // A conta relançada toca a gravação dela quando ficar o tempo
+        // configurado no jogo (commands/recordings.rs).
+        if let ReconnectNotice::Relaunched { user_id, .. } = notice {
+            arm_recording_after_reconnect(*user_id, chrono::Utc::now().timestamp_millis());
+        }
         let (level, line) = reconnect_console_line(notice);
         emit_launch_log(app, reconnect_notice_user(notice), level, "reconnect", line);
     }
@@ -952,6 +957,9 @@ pub(crate) fn reconnect_is_guarding() -> bool {
 /// as voltas que ele avisou, e a conferência de cada conta.
 #[cfg(target_os = "windows")]
 pub(crate) fn reconnect_after_health_tick(app: &tauri::AppHandle, notices: &[HealthNotice]) {
+    // Antes das saídas cedo abaixo: a gravação espera a conta ficar no jogo
+    // mesmo depois de a reconexão já ter dado a conta por reconectada.
+    recording_after_reconnect_tick(app);
     let tracked = platform::windows::tracker().get_all();
     let has_work = with_reconnect_book(|book| !book.entries.is_empty())
         || notices.iter().any(|n| matches!(n, HealthNotice::Dropped { .. }));

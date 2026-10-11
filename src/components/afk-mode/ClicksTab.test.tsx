@@ -491,6 +491,63 @@ describe("ClicksTab — dá para saber que está funcionando", () => {
   });
 });
 
+/**
+ * Ideia 25: com um vídeo ou outro jogo em tela cheia na frente, o ciclo espera
+ * em vez de roubar o foco (`afk_fullscreen_gate`). Ligado por padrão — protege
+ * quem está vendo algo — e a tela diz quando está esperando.
+ */
+describe("ClicksTab — espera a tela cheia sair", () => {
+  it("nasce ligado, explica numa frase e grava a escolha no INI", async () => {
+    renderDialog();
+    const toggle = screen.getByRole("button", { name: "Wait while a fullscreen window is in front" });
+    expect(toggle).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText(/a video or another game in fullscreen/i)).toBeInTheDocument();
+
+    await userEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-pressed", "false");
+    expect(invokeMock).toHaveBeenCalledWith("update_setting", {
+      section: "Afk",
+      key: "WaitForFullscreen",
+      value: "false",
+    });
+  });
+
+  it("lê a escolha desligada do INI", () => {
+    const settings = defaultSettings();
+    settings.Afk = { ...(settings.Afk ?? {}), WaitForFullscreen: "false" };
+    renderDialog({ settings });
+    expect(
+      screen.getByRole("button", { name: "Wait while a fullscreen window is in front" })
+    ).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("diz que está esperando enquanto a tela cheia segura o ciclo", () => {
+    renderDialog({
+      afkStatus: makeAfkStatus({
+        active: true,
+        startedAtMs: Date.now(),
+        key: "Space",
+        accounts: [makeAfkAccount()],
+        waitingFullscreen: true,
+      }),
+    });
+    expect(screen.getByText("Waiting: a fullscreen window is in front")).toBeInTheDocument();
+  });
+
+  it("não diz nada disso com o ciclo andando normalmente", () => {
+    renderDialog({
+      afkStatus: makeAfkStatus({
+        active: true,
+        startedAtMs: Date.now(),
+        key: "Space",
+        accounts: [makeAfkAccount()],
+        waitingFullscreen: false,
+      }),
+    });
+    expect(screen.queryByText("Waiting: a fullscreen window is in front")).not.toBeInTheDocument();
+  });
+});
+
 
 /**
  * O `SendInput` só alcança a janela em primeiro plano, e o Windows **recusa**

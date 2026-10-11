@@ -7,6 +7,7 @@ import { DANGER_ACTION, ModeStatusBar, NEUTRAL_ACTION, PRIMARY_ACTION } from "./
 import {
   formatAfkCountdown,
   formatAfkElapsed,
+  parseAfkMode,
   useClicksController,
   type ClicksController,
   type ClicksTabOptions,
@@ -39,7 +40,9 @@ export function ClicksTab(props: ClicksTabOptions) {
 
   const sendNowLabel = ctl.sendingNow
     ? t("Sending...")
-    : ctl.clickMode
+    : ctl.recordingMode
+      ? t("Play now")
+      : ctl.clickMode
       ? t("Click now")
       : t("Send the key now");
 
@@ -82,6 +85,11 @@ export function ClicksTab(props: ClicksTabOptions) {
           running && ctl.statusByUserId.size > 0
             ? t("Sends so far: {{count}}", { count: ctl.totalSends })
             : null,
+          ctl.waitingFullscreen ? (
+            <span key="fullscreen" role="status" className="text-amber-300/90">
+              {t("Waiting: a fullscreen window is in front")}
+            </span>
+          ) : null,
         ]}
         actions={
           running ? (
@@ -159,14 +167,21 @@ function SettingsCard({ ctl }: { ctl: ClicksController }) {
           options={[
             { value: "key", label: "Key press" },
             { value: "click", label: "Mouse click" },
+            { value: "recording", label: "Play the recording" },
           ]}
           disabled={configDisabled}
           ariaLabel="What to send"
-          onChange={(v) => ctl.setMode((v === "click" ? "click" : "key") as AfkMode)}
+          onChange={(v) => ctl.setMode(parseAfkMode(v) as AfkMode)}
           className="flex-1"
         />
       </div>
-      {clickMode ? (
+      {ctl.recordingMode ? (
+        <div className="text-[11px] theme-muted leading-4">
+          {t(
+            "Each account plays its own recording, or the one for all accounts, from start to end on every turn. Pick which one in the Recordings tab; the list below shows it next to each account."
+          )}
+        </div>
+      ) : clickMode ? (
         <>
           <div className="flex items-center gap-2">
             <span className="text-[12px] theme-muted w-32 shrink-0">{t("Click point")}</span>
@@ -219,6 +234,18 @@ function SettingsCard({ ctl }: { ctl: ClicksController }) {
         </>
       )}
       <ToggleRow label="Beep when a cycle finishes" checked={ctl.beepOnCycle} onChange={ctl.setBeepOnCycle} />
+      <div>
+        <ToggleRow
+          label="Wait while a fullscreen window is in front"
+          checked={ctl.waitForFullscreen}
+          onChange={ctl.setWaitForFullscreen}
+        />
+        <div className="text-[11px] theme-muted leading-4">
+          {t(
+            "With a video or another game in fullscreen in front, the cycle waits instead of taking the focus, for up to 5 minutes past the account's turn."
+          )}
+        </div>
+      </div>
       <div className="rounded-lg border theme-border bg-[var(--panel-soft)] px-3 py-2 text-[11px] theme-muted leading-4">
         {t(
           "Each cycle takes the focus away from the window you are using: it brings the Roblox window of each account whose turn it is to the front, one after another, for about half a second each, and gives the focus back only after the last one — about 4 seconds with 10 accounts."
@@ -228,6 +255,13 @@ function SettingsCard({ ctl }: { ctl: ClicksController }) {
           <>
             {t(
               "In click mode the cursor also jumps to the point and comes back, and the cycle takes about 1.2 seconds per account: the game has to see the mouse move and get a focus click before the real one."
+            )}{" "}
+          </>
+        ) : null}
+        {ctl.recordingMode ? (
+          <>
+            {t(
+              "With a recording, each window stays in front for the whole recording, so the cycle takes as long as the recordings add up to."
             )}{" "}
           </>
         ) : null}
@@ -294,6 +328,16 @@ function AccountsCard({ ctl }: { ctl: ClicksController }) {
                   {running && picked ? (
                     <span className="text-[11px] font-mono theme-muted shrink-0">
                       {formatAfkCountdown(row?.nextSendAtMs ?? null, ctl.nowMs, ctl.intervalSeconds * 1000)}
+                    </span>
+                  ) : null}
+                  {ctl.recordingMode && picked ? (
+                    <span
+                      className={`text-[11px] shrink-0 max-w-[8rem] truncate ${
+                        ctl.recordingNameFor(account.UserID) ? "theme-muted" : "text-amber-300/90"
+                      }`}
+                      title={ctl.recordingNameFor(account.UserID) ?? undefined}
+                    >
+                      {ctl.recordingNameFor(account.UserID) ?? t("no recording")}
                     </span>
                   ) : null}
                   {row?.lastErrorCode === "focusDenied" ? (

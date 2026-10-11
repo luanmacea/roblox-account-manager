@@ -455,6 +455,20 @@ impl SettingsStore {
             }
         }
 
+        // Gravações (docs/features/recordings.md): tocar a gravação da conta
+        // depois de a reconexão automática devolvê-la ao jogo nasce desligado;
+        // ligado, espera a conta ficar 30 s no jogo antes de tocar.
+        let recordings_defaults: &[(&str, &str)] = &[
+            ("AfterReconnect", "false"),
+            ("AfterReconnectDelaySeconds", "30"),
+        ];
+        let recordings = ini.section("Recordings");
+        for (key, value) in recordings_defaults {
+            if !recordings.exists(key) {
+                recordings.set(key, value, None);
+            }
+        }
+
         ini.section("Prompts");
 
         drop(ini);
@@ -799,6 +813,12 @@ mod settings_store_tests {
                 ("ClickX", "50"),
                 ("ClickY", "50"),
             ],
+        );
+
+        push(
+            &mut out,
+            "Recordings",
+            &[("AfterReconnect", "false"), ("AfterReconnectDelaySeconds", "30")],
         );
 
         push(

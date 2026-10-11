@@ -54,6 +54,7 @@ Todos os valores são strings; booleanos são `"true"`/`"false"` (qualquer outra
 | `UpdaterFeatureChannel` | a edição que está rodando (`standard` na padrão, `nexus-ws` na completa) | Canal de features do updater. Gravado no INI, nunca é reposto por uma versão nova; o botão "Get the complete edition" da página Avatars grava `nexus-ws` ([avatars.md](avatars.md#trocar-para-a-edição-completa-pelo-app)). |
 | `AccountJoinDelay` | `8` | Segundos entre contas no multi-launch. |
 | `AsyncJoin` | `false` | "Launch one account at a time": espera o sinal `next_account` (teto de 120 s) depois de cada conta. Nada na tela manda o sinal, então na prática são 2 minutos entre contas — é o que a descrição diz. Ligado, `AccountJoinDelay` e `WaitForGameJoin` ficam desabilitados com a dica de que voltam a valer ao desligá-lo. |
+| `RestoreRobloxSettingsOnExit` | `false` | "Restore Roblox settings when MultiAlt closes" (Settings › Optimization): devolve ao fechar o app o FPS, volume, gráficos, janela e FastFlags que o launch gravou nos arquivos do Roblox, quando nenhum cliente aberto pelo app está rodando. Cópia dos arquivos originais em `RobloxSettingsBackup/`. Só Windows. Ver [performance.md](performance.md#devolver-as-configurações-do-roblox-ao-fechar-generalrestorerobloxsettingsonexit). |
 | `KeepPcAwake` | `true` | Não deixa o Windows dormir (a tela pode apagar) enquanto o Modo AFK, o Auto Rejoin ou a reconexão automática roda; solta ao parar tudo e ao fechar o app. Só Windows. Ver [afk-mode.md](afk-mode.md#pc-acordado). |
 | `AutoReconnect` | `false` | Padrão de todas as contas para a [reconexão automática](watcher.md#reconexão-automática): reabre no mesmo jogo o cliente que o app abriu quando ele cai. O campo `AutoReconnect` da conta (chave na lista "In game" da página Session) vence. Também muda no cartão "Keep accounts in game" da página Session. Só Windows. |
 | `WaitForGameJoin` | `true` | "Start the next account once the previous one is in the game". Multi-launch no Windows: passa para a próxima conta quando o log diz que a anterior entrou no jogo (nunca antes de 8 s, no máximo 20 s ou o delay, se maior); sem log achado, vale o `AccountJoinDelay`. Ver [multi-launch.md](multi-launch.md). |
@@ -142,7 +143,7 @@ Todos os valores são strings; booleanos são `"true"`/`"false"` (qualquer outra
 | `ExitIfNoConnection` / `NoConnectionTimeout` | `false` / `60` | fecha sem conexão após N s |
 | `ExitOnBeta` | `false` | fecha se detectar Roblox beta |
 | `CloseIfNotResponding` | `false` | fecha o cliente do app que fica "Não respondendo" por 30 s |
-| `CloseRbxMemory` / `MemoryLowValue` | `false` / `200` | fecha abaixo de N MB |
+| `CloseRbxMemory` / `MemoryLowValue` | `false` / `200` | fecha abaixo de N MB; com o teto de memória (`Optimization.MemoryLimit`), também fecha quem continua acima dele depois de liberar |
 | `CloseRbxWindowTitle` / `ExpectedWindowTitle` | `false` / `Roblox` | fecha se o título divergir |
 | `SaveWindowPositions` | `false` | salva posição da janela nos `Fields` da conta |
 
@@ -168,6 +169,7 @@ Fora dos perfis, uma chave para todos os clientes (cartão **While you play** da
 | Chave | Default | Significado |
 |---|---|---|
 | `FollowFocus` | `false` | Otimização que segue o foco: o cliente em uso (que o app abriu) a toda velocidade, os outros com a política de fundo; 35 s de carência para cliente novo. |
+| `MemoryLimit` | `0` | Teto de memória de cada cliente que o app abriu, em MB (`0` = sem limite; aceito de 256 a 65536). Acima dele o app pede ao Windows para liberar a memória do cliente; fecha só com `Watcher.Enabled` + `Watcher.CloseRbxMemory`. A conta pode ter o seu (campo `MemoryLimit`, página Session). Também muda no resumo da página Session. Feature `memory-trim`, nas duas edições. Ver [watcher.md](watcher.md#teto-de-memória). |
 | `MuteBackgroundClients` | `false` | Fundo mudo: só o cliente em uso faz som (mixer do Windows). Só vale no binário com a feature `live-audio` (nas duas edições, via `standard`); sem ela a opção nem aparece. |
 
 Com `General.BottingUseSharedClientProfile=true`, Main e Alt usam o perfil Normal (`effective_launch_profile` em [launch_shared.rs](../../src-tauri/src/commands/launch_shared.rs)).
@@ -195,6 +197,18 @@ Com `General.BottingUseSharedClientProfile=true`, Main e Alt usam o perfil Norma
 | `IntervalSeconds` | `0` | Parte em segundos do mesmo intervalo (0–59). O total (mínimo 5 s, máximo 120 min) conta do **fim** de cada ciclo. |
 | `Key` | `""` | Tecla escolhida pelo usuário, de dentro da lista fechada do AFK mode. Vazio = o modo não liga. |
 | `BeepOnCycle` | `false` | Bipe curto (sintetizado, sem arquivo de áudio) quando um ciclo de envio termina. |
+| `Mode` | `key` | `key`, `click` ou `recording` (toca a gravação de cada conta — [recordings.md](recordings.md)). |
+| `ClickX`, `ClickY` | `50`, `50` | Ponto padrão do modo clique, em % da área interna da janela. |
+
+### `[Recordings]` — detalhes em [recordings.md](recordings.md)
+
+| Chave | Default | Significado |
+|---|---|---|
+| `AfterReconnect` | `false` | Toca a gravação da conta que a reconexão automática devolveu ao jogo (uma vez, só nela). |
+| `AfterReconnectDelaySeconds` | `30` | Quanto tempo a conta fica no jogo antes de a gravação tocar (5–3600 s). |
+
+A biblioteca de gravações e qual vale para cada conta ficam em `RAMRecordings.json`, não no INI.
+| `WaitForFullscreen` | `true` | "Wait while a fullscreen window is in front": com um vídeo ou outro jogo em tela cheia na frente, o ciclo espera em vez de tirar o foco, até 5 min além da hora da conta. Só `"false"` desliga. |
 
 ### `[Generator]` / `[BloxGen]`
 

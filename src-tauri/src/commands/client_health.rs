@@ -921,6 +921,8 @@ pub(crate) fn start_client_health_monitor(app: tauri::AppHandle) {
             reconnect_after_health_tick(&app, &notices);
             // PC acordado durante Modo AFK / Auto Rejoin / reconexão (keep_awake.rs).
             keep_awake_tick(&app);
+            // Teto de memória dos clientes do app (commands/memory_ceiling.rs).
+            memory_ceiling_tick(&app).await;
             tokio::time::sleep(CLIENT_HEALTH_TICK).await;
         }
     });

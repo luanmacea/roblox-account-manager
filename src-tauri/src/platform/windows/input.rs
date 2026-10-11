@@ -7,12 +7,16 @@
 // trazer a janela do Roblox para frente, **confirmar que ela chegou lá** e
 // devolver o foco depois (o ciclo mora em `commands/afk.rs`).
 //
-// Este módulo só **envia**, e por duas portas estreitas:
+// Este módulo só **envia**, e por portas estreitas:
 // - `tap_afk_key` recebe **nome** de tecla e o resolve pela lista fechada
 //   (`send_key` é privado): não existe chamador com virtual key cru;
 // - `click_afk_point` recebe janela + **porcentagem** e clica com o botão
 //   esquerdo dentro da área interna dela (`send_mouse` é privado): não existe
-//   chamador com coordenada de tela crua. O cursor volta para onde estava.
+//   chamador com coordenada de tela crua. O cursor volta para onde estava;
+// - as Gravações (docs/features/recordings.md) usam as mesmas duas formas:
+//   `press_recording_key` recebe **nome** de tecla da lista fechada das
+//   gravações (`RECORDING_KEYS`) e `click_recording_point` é o clique do AFK,
+//   com o clique de foco opcional.
 // Ler teclado ou botão do usuário é proibido aqui; a posição do cursor é lida só
 // para devolvê-lo e para o Marcar. A trava é o `afk_input_safety_tests` (em
 // `commands/afk.rs`), que varre este arquivo e só aqui aceita injeção de mouse.
@@ -20,7 +24,7 @@
 use windows_sys::Win32::Graphics::Gdi::ClientToScreen;
 use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
     MapVirtualKeyW, SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, INPUT_MOUSE, KEYBDINPUT,
-    KEYEVENTF_KEYUP, MAPVK_VK_TO_VSC, MOUSEEVENTF_ABSOLUTE, MOUSEEVENTF_LEFTDOWN,
+    KEYEVENTF_EXTENDEDKEY, KEYEVENTF_KEYUP, MAPVK_VK_TO_VSC, MOUSEEVENTF_ABSOLUTE, MOUSEEVENTF_LEFTDOWN,
     MOUSEEVENTF_LEFTUP, MOUSEEVENTF_MOVE, MOUSEEVENTF_VIRTUALDESK, MOUSEINPUT,
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::{
@@ -60,16 +64,25 @@ pub fn window_exists(hwnd: HWND) -> bool {
 /// Um evento de tecla para a janela em primeiro plano: `up = false` pressiona,
 /// `up = true` solta. Devolve `false` quando o Windows recusou o envio.
 ///
-/// Privado: quem chama passa **nome** de tecla por `tap_afk_key`, nunca um
-/// virtual key cru.
+/// Privado: quem chama passa **nome** de tecla por `tap_afk_key` ou
+/// `press_recording_key`, nunca um virtual key cru.
 fn send_key(vk: u16, scan: u16, up: bool) -> bool {
+    send_key_flags(vk, scan, up, false)
+}
+
+/// `send_key` com a marca de tecla estendida (as setas da lista das gravações).
+fn send_key_flags(vk: u16, scan: u16, up: bool, extended: bool) -> bool {
+    let mut flags = if up { KEYEVENTF_KEYUP } else { 0 };
+    if extended {
+        flags |= KEYEVENTF_EXTENDEDKEY;
+    }
     let input = INPUT {
         r#type: INPUT_KEYBOARD,
         Anonymous: INPUT_0 {
             ki: KEYBDINPUT {
                 wVk: vk,
                 wScan: scan,
-                dwFlags: if up { KEYEVENTF_KEYUP } else { 0 },
+                dwFlags: flags,
                 time: 0,
                 dwExtraInfo: 0,
             },
@@ -108,6 +121,36 @@ pub fn tap_afk_key(key: &str, hold_ms: u64) -> Result<(), String> {
         return Err("Windows refused to release the key".into());
     }
     Ok(())
+}
+
+/// `(virtual key, scan code, estendida)` de uma tecla da lista fechada das
+/// Gravações, ou `None` para qualquer outro nome.
+fn recording_vk_and_scan(key: &str) -> Option<(u16, u16, bool)> {
+    let (vk, extended) = crate::data::recordings::recording_key(key)?;
+    let scan = unsafe { MapVirtualKeyW(vk as u32, MAPVK_VK_TO_VSC) } as u16;
+    Some((vk, scan, extended))
+}
+
+/// Aperta (`up = false`) ou solta (`up = true`) uma tecla da lista das
+/// Gravações na janela em primeiro plano. Tecla fora da lista: `false`, sem
+/// enviar nada. O "solta" é tentado até três vezes, como no AFK: tecla presa
+/// faz o personagem andar sozinho.
+pub fn press_recording_key(key: &str, up: bool) -> bool {
+    let Some((vk, scan, extended)) = recording_vk_and_scan(key) else {
+        return false;
+    };
+    if !up {
+        return send_key_flags(vk, scan, false, extended);
+    }
+    for attempt in 0..KEY_UP_ATTEMPTS {
+        if send_key_flags(vk, scan, true, extended) {
+            return true;
+        }
+        if attempt + 1 < KEY_UP_ATTEMPTS {
+            std::thread::sleep(std::time::Duration::from_millis(KEY_UP_RETRY_MS));
+        }
+    }
+    false
 }
 
 /// Área interna (cliente) da janela, em coordenadas de tela. `None` para janela
@@ -208,8 +251,31 @@ fn virtual_desktop() -> Option<crate::AfkClientRect> {
 /// O "solta" é tentado até três vezes: botão que fica pressionado vira arrastar
 /// dentro do jogo.
 pub fn click_afk_point(hwnd: HWND, point: crate::AfkPoint, hold_ms: u64) -> Result<(), String> {
+    click_point_with_plan(hwnd, point, hold_ms, true)
+}
+
+/// O clique de uma Gravação: a mesma receita do AFK (`click_afk_point`), e o
+/// clique de foco só quando `focus_click` — o primeiro clique depois de trazer
+/// a janela. Os seguintes da mesma gravação já acham o jogo focado, e um clique
+/// a mais ali apertaria o botão do jogo duas vezes.
+pub fn click_recording_point(
+    hwnd: HWND,
+    point: crate::AfkPoint,
+    hold_ms: u64,
+    focus_click: bool,
+) -> Result<(), String> {
+    click_point_with_plan(hwnd, point, hold_ms, focus_click)
+}
+
+fn click_point_with_plan(
+    hwnd: HWND,
+    point: crate::AfkPoint,
+    hold_ms: u64,
+    focus_click: bool,
+) -> Result<(), String> {
     let rect = client_rect_on_screen(hwnd).ok_or("The window has no game area")?;
-    let steps = crate::afk_click_plan(rect, point, hold_ms).ok_or("The window has no game area")?;
+    let steps = crate::afk_click_plan_with(rect, point, hold_ms, focus_click)
+        .ok_or("The window has no game area")?;
     let desktop = virtual_desktop().ok_or("Could not read the screen size")?;
     let back = cursor_position();
 
@@ -304,6 +370,31 @@ mod win_input_tests {
     #[test]
     fn a_null_window_has_no_game_area() {
         assert_eq!(client_rect_on_screen(std::ptr::null_mut()), None);
+    }
+
+    #[test]
+    fn a_recording_key_gets_codes_and_arrows_are_extended() {
+        let (vk, scan, extended) = recording_vk_and_scan("Up").expect("Up está na lista");
+        assert_eq!(vk, 0x26);
+        assert!(extended);
+        assert_ne!(scan, 0);
+        let (vk_w, _, ext_w) = recording_vk_and_scan("w").expect("W está na lista");
+        assert_eq!(vk_w, 0x57);
+        assert!(!ext_w);
+    }
+
+    #[test]
+    fn a_key_outside_the_recording_list_is_never_sent() {
+        for outside in ["Enter", "Escape", "F4", "Tab", "LWin", ""] {
+            assert!(recording_vk_and_scan(outside).is_none(), "{outside:?}");
+            // Recusado antes de qualquer envio.
+            assert!(!press_recording_key(outside, true), "{outside:?}");
+        }
+    }
+
+    #[test]
+    fn a_null_window_never_gets_a_recording_click() {
+        assert!(click_recording_point(std::ptr::null_mut(), crate::AFK_DEFAULT_POINT, 1, false).is_err());
     }
 
     #[test]

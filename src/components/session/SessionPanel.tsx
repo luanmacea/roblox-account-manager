@@ -7,6 +7,7 @@ import {
   Gamepad2,
   Globe,
   ListX,
+  MemoryStick,
   PowerOff,
   RotateCw,
   SquareStop,
@@ -20,6 +21,8 @@ import { useStore } from "../../store";
 import { accountLabel } from "../../utils/accountName";
 import { ClientHealthNote } from "./ClientHealthNote";
 import { ReconnectSwitch } from "./ReconnectSwitch";
+import { MemoryLimitSelect, MemoryReading, type MemoryLimitValue } from "./MemoryLimitControl";
+import { MEMORY_LIMIT_SETTING, fieldsWithMemoryLimit, memoryLimitChoice } from "../../utils/memoryLimit";
 import {
   autoReconnectLabel,
   fieldsWithReconnect,
@@ -264,6 +267,40 @@ export function SessionPanel({ className = "" }: SessionPanelProps) {
       .map((entry) => entry.userId)
   );
   const [reconnectSaving, setReconnectSaving] = useState(false);
+
+  // Teto de memória (commands/memory_ceiling.rs): só com a feature
+  // `memory-trim` no binário, e só nos clientes que o app abriu. O campo
+  // `MemoryLimit` da conta manda; sem ele, `Optimization.MemoryLimit`.
+  const memoryTrim = isWindows && store.platformCapabilities?.supportsMemoryTrim === true;
+  const memoryDefaultRaw = store.settings?.[MEMORY_LIMIT_SETTING.section]?.[MEMORY_LIMIT_SETTING.key];
+  const memoryDefaultMb = memoryLimitChoice(undefined, memoryDefaultRaw).defaultMb;
+  const [memorySaving, setMemorySaving] = useState(false);
+  const memoryBulkIds = selected.filter((id) => !store.adoptedClients.has(id));
+  const memoryBulkLabel =
+    memoryBulkIds.length === 1
+      ? t("Memory limit for 1 selected")
+      : t("Memory limit for {{count}} selected", { count: memoryBulkIds.length });
+
+  /**
+   * Grava o limite (`null` = volta ao padrão) no `Fields.MemoryLimit` de cada
+   * conta, uma por vez. Vale na próxima passada do backend (2 s), sem relançar
+   * e sem fechar nada.
+   */
+  async function saveMemoryLimit(userIds: number[], value: MemoryLimitValue) {
+    const targets = store.accounts.filter((a) => userIds.includes(a.UserID));
+    if (targets.length === 0) return;
+    setError(null);
+    setMemorySaving(true);
+    try {
+      for (const account of targets) {
+        await store.updateAccount({ ...account, Fields: fieldsWithMemoryLimit(account.Fields, value) });
+      }
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setMemorySaving(false);
+    }
+  }
 
   function nameFor(userId: number): string {
     const account = store.accounts.find((a) => a.UserID === userId);
@@ -786,6 +823,26 @@ export function SessionPanel({ className = "" }: SessionPanelProps) {
           </div>
         )}
 
+        {/* Lote do teto de memória: a mesma faixa, sem os clientes do site. */}
+        {memoryTrim && memoryBulkIds.length > 0 && (
+          <div
+            data-testid="session-memory-bulk"
+            className="flex flex-wrap items-center gap-1.5 px-3 py-1.5 border-b theme-border text-[12px]"
+          >
+            <span className="flex items-center gap-1 theme-muted mr-auto min-w-0">
+              <MemoryStick size={12} strokeWidth={1.5} className="shrink-0" aria-hidden="true" />
+              <span className="truncate">{memoryBulkLabel}</span>
+            </span>
+            <MemoryLimitSelect
+              ariaLabel={memoryBulkLabel}
+              choice={null}
+              defaultMb={memoryDefaultMb}
+              disabled={memorySaving}
+              onChange={(value) => void saveMemoryLimit(memoryBulkIds, value)}
+            />
+          </div>
+        )}
+
         {runningIds.length === 0 && unidentified.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-1.5 px-3 py-6 theme-muted">
             <Gamepad2 size={20} strokeWidth={1.5} />
@@ -798,6 +855,11 @@ export function SessionPanel({ className = "" }: SessionPanelProps) {
             {runningIds.map((userId) => {
               const name = nameFor(userId);
               const choice = isWindows ? choiceFor(userId) : null;
+              const account = store.accounts.find((a) => a.UserID === userId);
+              const memoryChoice =
+                memoryTrim && account && !store.adoptedClients.has(userId)
+                  ? memoryLimitChoice(account.Fields, memoryDefaultRaw)
+                  : null;
               return (
                 <li
                   key={userId}
@@ -824,6 +886,7 @@ export function SessionPanel({ className = "" }: SessionPanelProps) {
                         health={store.clientHealth?.get(userId)}
                         reconnecting={reconnectingIds.has(userId)}
                       />
+                      {memoryChoice && <MemoryReading memory={store.clientMemory?.get(userId)} />}
                       {store.adoptedClients.has(userId) && (
                         <span
                           className="min-w-0 flex items-center gap-1 theme-muted"
@@ -837,6 +900,15 @@ export function SessionPanel({ className = "" }: SessionPanelProps) {
                     {sessions.has(userId) && <CurrentSessionLine session={sessions.get(userId)!} />}
                   </span>
                   <span className="ml-auto flex items-center gap-1.5 shrink-0">
+                    {memoryChoice && (
+                      <MemoryLimitSelect
+                        ariaLabel={t("Memory limit for {{name}}", { name })}
+                        choice={memoryChoice}
+                        defaultMb={memoryDefaultMb}
+                        disabled={memorySaving}
+                        onChange={(value) => void saveMemoryLimit([userId], value)}
+                      />
+                    )}
                     {choice && (
                       <ReconnectSwitch
                         name={name}

@@ -7,7 +7,8 @@
  * campos a cada ciclo (`afk_point_from_fields`), então mudar vale no ciclo
  * seguinte sem religar o modo.
  */
-export type AfkMode = "key" | "click";
+/** `recording` toca a gravação de cada conta (docs/features/recordings.md). */
+export type AfkMode = "key" | "click" | "recording";
 
 export interface AfkPoint {
   x: number;

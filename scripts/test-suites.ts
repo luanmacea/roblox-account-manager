@@ -150,6 +150,9 @@ export const SUITES: Record<string, TestSuite> = {
       // Reconexão automática da conta que caiu (commands/reconnect.rs).
       "auto_reconnect_tests",
       "auto_reconnect_target_tests",
+      // Teto de memória que libera RAM antes de fechar (memory_ceiling.rs, memory_trim.rs).
+      "memory_ceiling_tests",
+      "win_memory_trim_tests",
     ],
     // A aba Auto Rejoin do Modo AFK e a moldura (abas, modal) que a abre.
     front: [
@@ -158,6 +161,7 @@ export const SUITES: Record<string, TestSuite> = {
       "src/utils/clientHealth.test.ts",
       "src/components/session/SessionPanel.test.tsx",
       "src/utils/autoReconnect.test.ts",
+      "src/utils/memoryLimit.test.ts",
     ],
   },
   afk: {
@@ -178,6 +182,25 @@ export const SUITES: Record<string, TestSuite> = {
       "src/utils/afkBeep.test.ts",
       "src/store.test.ts",
       "src/afkClickPoint.test.ts",
+    ],
+  },
+  recordings: {
+    description: "Gravações: biblioteca, passos, qual vale para cada conta, reprodução e o gatilho depois da reconexão",
+    rust: [
+      "recordings_store_tests",
+      "recordings_validation_tests",
+      "recordings_playback_tests",
+      "recordings_after_reconnect_tests",
+      "recordings_afk_mode_tests",
+      // As portas novas do módulo de entrada (press_recording_key, click_recording_point).
+      "win_input_tests",
+      // A reprodução mora na árvore do Modo AFK: a trava continua valendo.
+      "afk_input_safety_tests",
+    ],
+    front: [
+      "src/components/afk-mode/RecordingsTab.test.tsx",
+      "src/recordings.test.ts",
+      "src/components/afk-mode/AfkModeView.test.tsx",
     ],
   },
   isolation: {
@@ -503,6 +526,9 @@ export const SUITES: Record<string, TestSuite> = {
       "win_grid_style_tests",
       "win_grid_slot_tests",
       "client_window_plan_tests",
+      // Devolver as configurações do Roblox ao fechar (ideia 21, settings_restore.rs).
+      "win_settings_restore_tests",
+      "settings_on_exit_tests",
     ],
     front: ["src/components/settings/settingsTabs.test.tsx"],
   },
