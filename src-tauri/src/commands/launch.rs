@@ -932,6 +932,8 @@ async fn launch_roblox_windows(
     let configured_old_join = settings.get_bool("Developer", "UseOldJoin");
     let auto_close_last_process = settings.get_bool("General", "AutoCloseLastProcess");
     let auto_close_multi_conflicts = settings.get_bool("General", "AutoCloseRobloxForMultiRbx");
+    // Experimental (ideia 3): reservar o nome do singleton com um Mutex.
+    let reserve_singleton_event = settings.get_bool("General", "ReserveSingletonEvent");
     let account_snapshot_for_version = state.get_all()?;
     let account_version_override = account_snapshot_for_version
         .iter()
@@ -986,7 +988,7 @@ async fn launch_roblox_windows(
 
     let multi_rbx = settings.get_bool("General", "EnableMultiRbx");
     if multi_rbx {
-        ensure_multi_roblox_enabled(auto_close_multi_conflicts).await?;
+        ensure_multi_roblox_enabled(auto_close_multi_conflicts, reserve_singleton_event).await?;
     } else {
         let _ = windows::disable_multi_roblox();
     }
@@ -1428,6 +1430,8 @@ async fn launch_multiple(
     let configured_old_join = settings.get_bool("Developer", "UseOldJoin");
     let auto_close_last_process = settings.get_bool("General", "AutoCloseLastProcess");
     let auto_close_multi_conflicts = settings.get_bool("General", "AutoCloseRobloxForMultiRbx");
+    // Experimental (ideia 3): reservar o nome do singleton com um Mutex.
+    let reserve_singleton_event = settings.get_bool("General", "ReserveSingletonEvent");
     let start_minimized = settings.get_bool("General", "StartRobloxMinimized");
     // A fila é por execução: este lote substitui o anterior — desde que o
     // anterior tenha acabado. A reserva cobre o lote inteiro aqui, antes de
@@ -1607,7 +1611,7 @@ async fn launch_multiple(
         if multi_rbx {
             // Falha de Multi Roblox aborta a fila inteira (diferente dos erros
             // por conta): sem o mutex, todo cliente novo derruba o anterior.
-            if let Err(err) = ensure_multi_roblox_enabled(auto_close_multi_conflicts).await {
+            if let Err(err) = ensure_multi_roblox_enabled(auto_close_multi_conflicts, reserve_singleton_event).await {
                 sequence.abort(Some(uid), &err);
                 return Err(err);
             }

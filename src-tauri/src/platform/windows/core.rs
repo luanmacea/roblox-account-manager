@@ -9,6 +9,15 @@ unsafe impl Send for SendHandle {}
 /// acquires, holds and releases it.
 static MULTI_ROBLOX_HANDLE: Mutex<Option<std::sync::mpsc::Sender<()>>> = Mutex::new(None);
 static COOKIES_LOCK_HANDLE: Mutex<Option<SendHandle>> = Mutex::new(None);
+/// Reserva experimental do nome `ROBLOX_singletonEvent` (ideia 3): um Mutex
+/// **nosso** com esse nome. Enquanto ele existe, nenhum cliente consegue criar
+/// o Event de instância única, e um teleporte não derruba outro cliente. Só
+/// guardamos o handle — não é preciso ser dono do mutex, então qualquer thread
+/// pode criar e fechar.
+static SINGLETON_RESERVATION: Mutex<Option<SendHandle>> = Mutex::new(None);
+/// A opção "Experimental: keep clients open across teleports"
+/// (`General.ReserveSingletonEvent`), desligada por padrão.
+static RESERVE_SINGLETON_EVENT: AtomicBool = AtomicBool::new(false);
 static TRACKER: LazyLock<ProcessTracker> = LazyLock::new(ProcessTracker::new);
 
 fn encode_wide(s: impl AsRef<OsStr>) -> Vec<u16> {
@@ -112,6 +121,7 @@ pub fn enable_multi_roblox() -> Result<bool, String> {
         // Um cliente aberto fora do app pode ter publicado o Event mesmo com o
         // mutex na nossa mão; limpar é barato e não fecha ninguém.
         let _ = close_roblox_singleton_handles();
+        apply_singleton_reservation();
         lock_roblox_cookies()?;
         return Ok(true);
     }
@@ -120,11 +130,15 @@ pub fn enable_multi_roblox() -> Result<bool, String> {
     // recurso de matar clientes com `AutoCloseRobloxForMultiRbx`), destrava
     // pelo Event — ou constata que ele já não existe.
     let closed_now = close_roblox_singleton_handles();
+    apply_singleton_reservation();
     let roblox_running = !find_roblox_pids_all().is_empty();
     if !can_open_another_client(
         closed_now,
         roblox_running,
-        named_event_exists(ROBLOX_SINGLETON_EVENT),
+        event_blocks_next_client(
+            named_event_exists(ROBLOX_SINGLETON_EVENT),
+            singleton_reservation_held(),
+        ),
     ) {
         // O Event existe e não deu para fechá-lo, ou quem segura o mutex é
         // outra coisa (RAM legado, outra ferramenta). Caminho antigo.
@@ -152,6 +166,100 @@ pub fn enable_multi_roblox() -> Result<bool, String> {
 /// legado, outra ferramenta) e o chamador segue o caminho antigo.
 fn can_open_another_client(closed_now: usize, roblox_running: bool, event_exists: bool) -> bool {
     closed_now > 0 || (roblox_running && !event_exists)
+}
+
+/// O nome do Event "existe" também quando é a **nossa** reserva (um Mutex com o
+/// mesmo nome: `OpenEventW` falha com tipo errado, não com "não encontrado").
+/// Essa não barra o próximo cliente — é justamente o que impede o Event.
+fn event_blocks_next_client(name_exists: bool, reserved_by_us: bool) -> bool {
+    name_exists && !reserved_by_us
+}
+
+/// O que fazer com a reserva do nome `ROBLOX_singletonEvent` agora.
+#[derive(Debug, PartialEq, Eq)]
+enum ReservationStep {
+    /// Ligada e já reservada.
+    Keep,
+    /// Ligada, sem reserva e o nome livre: criar o Mutex antes que um cliente
+    /// crie o Event.
+    Create,
+    /// Ligada, mas um cliente ainda segura o Event (não deu para fechar): não
+    /// há como reservar agora; o método atual segue valendo.
+    Wait,
+    /// Desligada com reserva feita: soltar o nome.
+    Release,
+    Nothing,
+}
+
+fn reservation_step(enabled: bool, held: bool, event_exists_now: bool) -> ReservationStep {
+    match (enabled, held) {
+        (true, true) => ReservationStep::Keep,
+        (true, false) if !event_exists_now => ReservationStep::Create,
+        (true, false) => ReservationStep::Wait,
+        (false, true) => ReservationStep::Release,
+        (false, false) => ReservationStep::Nothing,
+    }
+}
+
+/// Liga/desliga a reserva experimental. Desligar solta o nome na hora.
+pub fn set_singleton_reservation_enabled(enabled: bool) {
+    RESERVE_SINGLETON_EVENT.store(enabled, Ordering::SeqCst);
+    if !enabled {
+        release_singleton_reservation();
+    }
+}
+
+pub fn singleton_reservation_enabled() -> bool {
+    RESERVE_SINGLETON_EVENT.load(Ordering::SeqCst)
+}
+
+pub fn singleton_reservation_held() -> bool {
+    SINGLETON_RESERVATION
+        .lock()
+        .map(|g| g.is_some())
+        .unwrap_or(false)
+}
+
+/// Executa o passo de [`reservation_step`]. Nunca fecha cliente nenhum: no
+/// máximo cria ou fecha um handle **nosso**.
+fn apply_singleton_reservation() {
+    let enabled = singleton_reservation_enabled();
+    let held = singleton_reservation_held();
+    let event_exists_now = enabled && !held && named_event_exists(ROBLOX_SINGLETON_EVENT);
+    match reservation_step(enabled, held, event_exists_now) {
+        ReservationStep::Create => {
+            let _ = reserve_named_object(ROBLOX_SINGLETON_EVENT);
+        }
+        ReservationStep::Release => release_singleton_reservation(),
+        ReservationStep::Keep | ReservationStep::Wait | ReservationStep::Nothing => {}
+    }
+}
+
+/// Cria um Mutex (sem dono) com `name` e guarda o handle. `false` se o nome já
+/// é de outro tipo de objeto (um Event de cliente) ou a API falhou.
+fn reserve_named_object(name: &str) -> bool {
+    let Ok(mut slot) = SINGLETON_RESERVATION.lock() else {
+        return false;
+    };
+    if slot.is_some() {
+        return true;
+    }
+    let wide = encode_wide(name);
+    let handle = unsafe { CreateMutexW(std::ptr::null(), 0, wide.as_ptr()) };
+    if handle.is_null() {
+        return false;
+    }
+    *slot = Some(SendHandle(handle));
+    eprintln!("Multi Roblox (experimental): {} reservado", name);
+    true
+}
+
+fn release_singleton_reservation() {
+    if let Ok(mut slot) = SINGLETON_RESERVATION.lock() {
+        if let Some(SendHandle(h)) = slot.take() {
+            unsafe { CloseHandle(h) };
+        }
+    }
 }
 
 fn release_multi_roblox_mutex() {
@@ -182,6 +290,9 @@ pub fn this_process_holds_multi_roblox() -> bool {
 
 pub fn disable_multi_roblox() -> Result<(), String> {
     release_multi_roblox_mutex();
+    // Multi Roblox desligado (ou o app fechando): a reserva experimental sai
+    // junto. Só fecha o handle nosso; nenhum cliente é tocado.
+    release_singleton_reservation();
 
     lock_roblox_cookies()?;
     Ok(())
@@ -555,6 +666,75 @@ mod browser_tracker_tests {
             seen.insert(generate_browser_tracker_id());
         }
         assert!(seen.len() > 1, "tracker ids should not be constant");
+    }
+}
+
+#[cfg(test)]
+mod singleton_reservation_tests {
+    use super::*;
+
+    #[test]
+    fn with_the_option_off_nothing_is_reserved() {
+        assert_eq!(reservation_step(false, false, false), ReservationStep::Nothing);
+        assert_eq!(reservation_step(false, false, true), ReservationStep::Nothing);
+    }
+
+    #[test]
+    fn on_and_free_creates_on_and_taken_waits() {
+        assert_eq!(reservation_step(true, false, false), ReservationStep::Create);
+        // Um cliente ainda segura o Event (não deu para fechar): espera.
+        assert_eq!(reservation_step(true, false, true), ReservationStep::Wait);
+        assert_eq!(reservation_step(true, true, true), ReservationStep::Keep);
+        assert_eq!(reservation_step(true, true, false), ReservationStep::Keep);
+    }
+
+    #[test]
+    fn turning_it_off_releases_the_name() {
+        assert_eq!(reservation_step(false, true, false), ReservationStep::Release);
+        assert_eq!(reservation_step(false, true, true), ReservationStep::Release);
+    }
+
+    #[test]
+    fn our_own_reservation_does_not_block_the_next_client() {
+        assert!(event_blocks_next_client(true, false));
+        assert!(!event_blocks_next_client(true, true));
+        assert!(!event_blocks_next_client(false, false));
+        assert!(!event_blocks_next_client(false, true));
+    }
+
+    /// Com o nome reservado por um Mutex, ninguém consegue criar um Event com
+    /// ele — é o que faz o cliente não achar a "instância antiga". Usa um nome
+    /// de teste: o de verdade nunca é tocado aqui.
+    #[test]
+    fn a_reserved_name_cannot_be_created_as_an_event() {
+        use windows_sys::Win32::System::Threading::CreateEventW;
+        let name = format!("RAMTest_reserved_singletonEvent_{}", std::process::id());
+        let wide = encode_wide(&name);
+        let reservation = unsafe { CreateMutexW(std::ptr::null(), 0, wide.as_ptr()) };
+        assert!(!reservation.is_null());
+
+        let event = unsafe { CreateEventW(std::ptr::null(), 1, 0, wide.as_ptr()) };
+        assert!(event.is_null(), "an Event was created over the reserved name");
+        assert!(named_event_exists(&name), "the name reads as taken");
+
+        unsafe { CloseHandle(reservation) };
+        let event = unsafe { CreateEventW(std::ptr::null(), 1, 0, wide.as_ptr()) };
+        assert!(!event.is_null(), "after the release the name is free again");
+        unsafe { CloseHandle(event) };
+    }
+
+    #[test]
+    fn releasing_without_a_reservation_is_harmless() {
+        release_singleton_reservation();
+        assert!(!singleton_reservation_held());
+    }
+
+    /// O padrão do processo é desligado: só o launch, lendo
+    /// `General.ReserveSingletonEvent`, liga.
+    #[test]
+    fn the_process_starts_with_the_reservation_off() {
+        let source = include_str!("core.rs");
+        assert!(source.contains("static RESERVE_SINGLETON_EVENT: AtomicBool = AtomicBool::new(false);"));
     }
 }
 

@@ -107,6 +107,15 @@ export function diagnosticText(check: DiagnosticCheck, t: T): DiagnosticText {
     case "multiRoblox.held":
     case "multiRoblox.free":
       return { title: t("Multi Roblox is ready"), detail: "" };
+    case "singletonReservation.reserved":
+      return { title: t("Experimental teleport protection is active"), detail: "" };
+    case "singletonReservation.notReserved":
+      return {
+        title: t("Experimental teleport protection is not active yet"),
+        detail: t(
+          "It starts on the next launch, once no Roblox window is holding the name. Until then the usual Multi Roblox method is used."
+        ),
+      };
     case "multiRoblox.clientOpen":
       return {
         title: t("Multi Roblox is ready"),

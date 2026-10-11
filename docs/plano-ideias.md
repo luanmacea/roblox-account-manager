@@ -67,6 +67,10 @@ de subir a próxima:
   isso não entra. Bônus: se funcionar, dá para parar de mexer nos processos do
   Roblox, que é justamente o tipo de código que antivírus estranham. Precisa de
   teste com você teleportando entre places com 2+ contas abertas.
+  **Feito no pacote Suporte como opção experimental desligada** ("Experimental:
+  keep clients open across teleports", Settings › General): o método atual
+  continua o padrão e nada fecha cliente. Falta o seu teste com teleporte —
+  ver [launch.md](features/launch.md#regras-de-negócio).
 - **7 — gravar o cookie novo.** Às vezes o Roblox troca o cookie da conta numa
   resposta. Hoje só guardamos o novo em dois casos (sair das outras sessões e
   trocar senha). Se ele trocar em outra hora, a conta salva fica com o cookie

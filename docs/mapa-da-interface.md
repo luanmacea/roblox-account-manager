@@ -142,6 +142,8 @@ Seções numa lista vertical à esquerda. As mais úteis no dia a dia:
 | `Optimization` | FPS, gráficos, tamanho de janela e política de processo do Windows — um perfil por papel: `Normal`, `Auto Rejoin Main` e `Auto Rejoin Alt` (os dois últimos só aparecem com o Auto Rejoin ligado e perfis separados). |
 | `Misc` | Sincronia dos campos de launch, shuffle de Job ID, criptografia, **trancar por inatividade** (só com senha do app; a tela tranca e tudo continua rodando) e "lembrar senha". |
 
+Em General também fica, **desligado**, `Experimental: keep clients open across teleports` (só com Multi Roblox): reserva o nome que o Roblox usa para permitir uma janela só, para um teleporte não fechar outra conta. Ainda falta teste com teleporte de verdade.
+
 **Dois interruptores em General mudam o app inteiro:** `Multi Roblox` (várias instâncias ao mesmo tempo) e `Auto Rejoin` (destrava todo o ciclo de rejoin automático). Sem eles ligados, várias funcionalidades simplesmente não aparecem.
 
 ---

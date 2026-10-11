@@ -598,6 +598,22 @@ describe("GeneralTab", () => {
       await userEvent.click(toggle as HTMLElement);
       await expectSaved("General", "KeepPcAwake", "false");
     });
+
+    /** Ideia 3: experimental, nasce desligado e só vale com o Multi Roblox. */
+    it("has the experimental teleport protection off and locked until Multi Roblox is on", async () => {
+      renderGeneral();
+      const label = "Experimental: keep clients open across teleports";
+      const off = (await screen.findByText(label)).closest("[role=switch]");
+      expect(off).toHaveAttribute("aria-checked", "false");
+      expect(off).toHaveAttribute("aria-disabled", "true");
+      cleanup();
+
+      renderGeneral({ General: { EnableMultiRbx: "true" } });
+      const toggle = (await screen.findByText(label)).closest("[role=switch]");
+      expect(toggle).toHaveAttribute("aria-checked", "false");
+      await userEvent.click(toggle as HTMLElement);
+      await expectSaved("General", "ReserveSingletonEvent", "true");
+    });
   });
 
   it("registers the app with the OS autostart when Run on Windows Startup is turned on", async () => {

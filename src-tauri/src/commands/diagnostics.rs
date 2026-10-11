@@ -75,15 +75,15 @@ fn diagnose_mutex_holder() -> Result<MutexDiagnosis, String> {
     }
 }
 
-// â”€â”€ DiagnÃ³stico "o launch nÃ£o faz nada" (ideia 16) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Diagnóstico "o launch não faz nada" (ideia 16) ─────────────────────────
 //
-// Uma lista de checagens para quem relata "clico e nada acontece". **SÃ³ lÃª**:
-// nunca fecha cliente, nunca mexe em registro, nunca baixa build. A Ãºnica
-// escrita Ã© o arquivo de prova da checagem de pasta, criado e apagado na hora.
+// Uma lista de checagens para quem relata "clico e nada acontece". **Só lê**:
+// nunca fecha cliente, nunca mexe em registro, nunca baixa build. A única
+// escrita é o arquivo de prova da checagem de pasta, criado e apagado na hora.
 //
-// O backend devolve sÃ³ `id` + `reason` (+ um nÃºmero quando faz sentido); a
-// frase que a pessoa lÃª sai do frontend (`src/utils/diagnostics.ts`), traduzida.
-// Assim nada de caminho, nome de conta ou PID vai para a tela â€” e o resumo do
+// O backend devolve só `id` + `reason` (+ um número quando faz sentido); a
+// frase que a pessoa lê sai do frontend (`src/utils/diagnostics.ts`), traduzida.
+// Assim nada de caminho, nome de conta ou PID vai para a tela — e o resumo do
 // "Reportar problema" (ideia 28) pode levar o resultado sem anonimizar nada.
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
@@ -115,21 +115,21 @@ impl DiagnosticCheck {
     }
 }
 
-/// Um processo do Roblox sem janela hÃ¡ mais que isto conta como "preso": um
-/// cliente subindo leva alguns segundos para mostrar a janela; 150 s Ã© o limite
-/// que o RobloxKeeper (ideia 16) usa, folgado para mÃ¡quina lenta.
+/// Um processo do Roblox sem janela há mais que isto conta como "preso": um
+/// cliente subindo leva alguns segundos para mostrar a janela; 150 s é o limite
+/// que o RobloxKeeper (ideia 16) usa, folgado para máquina lenta.
 const STUCK_PROCESS_MIN_AGE_SECS: u64 = 150;
 
 /// Hosts consultados na checagem de internet: pedidos sem conta, pequenos.
-/// Qualquer resposta HTTP (atÃ© 404) prova que o Roblox Ã© alcanÃ§Ã¡vel.
+/// Qualquer resposta HTTP (até 404) prova que o Roblox é alcançável.
 const REACHABILITY_PROBES: &[(&str, &str)] = &[("users", "/v1/users/1"), ("auth", "/v2/metadata")];
 
 fn install_check(build_found: bool) -> DiagnosticCheck {
     if build_found {
         DiagnosticCheck::new("robloxInstall", CheckStatus::Ok, "found")
     } else {
-        // NÃ£o Ã© defeito por si: o launch baixa a build de produÃ§Ã£o sozinho.
-        // Vira problema quando a internet tambÃ©m falha â€” a frase diz isso.
+        // Não é defeito por si: o launch baixa a build de produção sozinho.
+        // Vira problema quando a internet também falha — a frase diz isso.
         DiagnosticCheck::new("robloxInstall", CheckStatus::Warn, "missing")
     }
 }
@@ -137,11 +137,11 @@ fn install_check(build_found: bool) -> DiagnosticCheck {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum FolderProbe {
     Writable,
-    /// A pasta ainda nÃ£o existe, mas a mais prÃ³xima que existe aceita escrita
+    /// A pasta ainda não existe, mas a mais próxima que existe aceita escrita
     /// (o app a cria quando precisar).
     CanBeCreated,
     NotWritable,
-    /// Nem dÃ¡ para saber onde fica (variÃ¡vel de ambiente faltando).
+    /// Nem dá para saber onde fica (variável de ambiente faltando).
     Unknown,
 }
 
@@ -154,7 +154,7 @@ fn folder_check(id: &'static str, probe: FolderProbe) -> DiagnosticCheck {
 }
 
 /// Tenta criar e apagar um arquivo de prova em `dir` (ou na pasta mais
-/// prÃ³xima que existir acima dela). NÃ£o cria a pasta: se ela nÃ£o existe, sÃ³
+/// próxima que existir acima dela). Não cria a pasta: se ela não existe, só
 /// diz se daria para criar.
 fn probe_folder_writable(dir: &std::path::Path) -> FolderProbe {
     let mut target = dir.to_path_buf();
@@ -189,7 +189,7 @@ fn internet_check(reached: usize, total: usize) -> DiagnosticCheck {
 }
 
 /// Quantos hosts do Roblox responderam (com qualquer status HTTP). Timeout,
-/// DNS ou TLS quebrado contam como "nÃ£o alcanÃ§ou".
+/// DNS ou TLS quebrado contam como "não alcançou".
 async fn probe_roblox_hosts() -> (usize, usize) {
     let client = match api::http_client::builder_with(
         std::time::Duration::from_secs(6),
@@ -214,12 +214,12 @@ async fn probe_roblox_hosts() -> (usize, usize) {
 #[derive(Debug, Clone, Copy)]
 struct RobloxProcessView {
     has_window: bool,
-    /// HÃ¡ quanto tempo o processo existe; `None` = nÃ£o deu para ler.
+    /// Há quanto tempo o processo existe; `None` = não deu para ler.
     age_secs: Option<u64>,
 }
 
-/// Quantos processos estÃ£o **sem janela hÃ¡ tempo demais**. Sem idade conhecida
-/// o processo nÃ£o entra: melhor nÃ£o acusar um cliente que acabou de abrir.
+/// Quantos processos estão **sem janela há tempo demais**. Sem idade conhecida
+/// o processo não entra: melhor não acusar um cliente que acabou de abrir.
 fn count_stuck_processes(processes: &[RobloxProcessView], min_age_secs: u64) -> usize {
     processes
         .iter()
@@ -240,7 +240,7 @@ fn multi_roblox_check(enabled: bool, holder: &str, roblox_running: bool) -> Diag
     if !enabled {
         return if roblox_running {
             // Com um cliente aberto e o Multi Roblox desligado, a conta nova
-            // derruba a que estÃ¡ aberta (ou nÃ£o sobe) â€” o "nÃ£o faz nada" clÃ¡ssico.
+            // derruba a que está aberta (ou não sobe) — o "não faz nada" clássico.
             DiagnosticCheck::new("multiRoblox", CheckStatus::Warn, "offWithClients")
         } else {
             DiagnosticCheck::new("multiRoblox", CheckStatus::Ok, "off")
@@ -252,6 +252,21 @@ fn multi_roblox_check(enabled: bool, holder: &str, roblox_running: bool) -> Diag
         "roblox" => DiagnosticCheck::new("multiRoblox", CheckStatus::Ok, "clientOpen"),
         _ => DiagnosticCheck::new("multiRoblox", CheckStatus::Ok, "free"),
     }
+}
+
+/// A reserva experimental do nome do singleton (ideia 3). Só aparece com a
+/// opção ligada: desligada, não há o que dizer.
+fn singleton_reservation_check(enabled: bool, held: bool) -> Option<DiagnosticCheck> {
+    if !enabled {
+        return None;
+    }
+    Some(if held {
+        DiagnosticCheck::new("singletonReservation", CheckStatus::Ok, "reserved")
+    } else {
+        // Ainda não houve launch com a opção ligada, ou um cliente segura o
+        // Event e ele não pôde ser fechado. O método atual continua valendo.
+        DiagnosticCheck::new("singletonReservation", CheckStatus::Warn, "notReserved")
+    })
 }
 
 #[cfg(target_os = "windows")]
@@ -320,6 +335,13 @@ async fn run_launch_diagnostics(
             holder,
             !roblox_pids.is_empty(),
         ));
+        if let Some(check) = singleton_reservation_check(
+            settings.get_bool("General", "EnableMultiRbx")
+                && settings.get_bool("General", "ReserveSingletonEvent"),
+            platform::windows::singleton_reservation_held(),
+        ) {
+            checks.push(check);
+        }
     }
     #[cfg(not(target_os = "windows"))]
     let _ = &settings;
@@ -411,11 +433,11 @@ mod launch_diagnostics_tests {
     fn only_old_windowless_processes_count_as_stuck() {
         let views = [
             RobloxProcessView { has_window: true, age_secs: Some(9_999) },
-            // Acabou de abrir: ainda carregando, nÃ£o Ã© preso.
+            // Acabou de abrir: ainda carregando, não é preso.
             RobloxProcessView { has_window: false, age_secs: Some(20) },
             RobloxProcessView { has_window: false, age_secs: Some(STUCK_PROCESS_MIN_AGE_SECS) },
             RobloxProcessView { has_window: false, age_secs: Some(3_600) },
-            // Idade desconhecida: nÃ£o acusa.
+            // Idade desconhecida: não acusa.
             RobloxProcessView { has_window: false, age_secs: None },
         ];
         assert_eq!(count_stuck_processes(&views, STUCK_PROCESS_MIN_AGE_SECS), 2);
@@ -447,6 +469,16 @@ mod launch_diagnostics_tests {
     }
 
     #[test]
+    fn the_experimental_reservation_only_shows_up_when_it_is_on() {
+        assert_eq!(singleton_reservation_check(false, false), None);
+        assert_eq!(singleton_reservation_check(false, true), None);
+        assert_eq!(singleton_reservation_check(true, true).unwrap().status, CheckStatus::Ok);
+        let waiting = singleton_reservation_check(true, false).unwrap();
+        assert_eq!(waiting.status, CheckStatus::Warn);
+        assert_eq!(waiting.reason, "notReserved");
+    }
+
+    #[test]
     fn a_check_serializes_with_the_keys_the_ui_reads() {
         let json = serde_json::to_value(stuck_processes_check(2)).unwrap();
         assert_eq!(json["id"], "stuckProcesses");
@@ -459,10 +491,10 @@ mod launch_diagnostics_tests {
 
     #[test]
     fn the_diagnostics_never_close_or_kill_anything() {
-        // Read-only Ã© contrato: a checagem nÃ£o pode alcanÃ§ar kill/terminate.
+        // Read-only é contrato: a checagem não pode alcançar kill/terminate.
         let source = include_str!("diagnostics.rs");
         let body = source
-            .split("// â”€â”€ DiagnÃ³stico \"o launch nÃ£o faz nada\"")
+            .split("// ── Diagnóstico \"o launch não faz nada\"")
             .nth(1)
             .and_then(|s| s.split("#[cfg(test)]").next())
             .expect("diagnostics section");

@@ -2349,5 +2349,10 @@
   "This code expired before it was approved.": "Este código caducó antes de ser aprobado.",
   "Type the code above and confirm.": "Escribe el código de arriba y confirma.",
   "Waiting for the code...": "Esperando el código...",
-  "Your code": "Tu código"
+  "Your code": "Tu código",
+  "Experimental teleport protection is active": "La protección experimental de teletransporte está activa",
+  "Experimental teleport protection is not active yet": "La protección experimental de teletransporte aún no está activa",
+  "Experimental: keep clients open across teleports": "Experimental: mantener los clientes abiertos en los teletransportes",
+  "It starts on the next launch, once no Roblox window is holding the name. Until then the usual Multi Roblox method is used.": "Empieza en el próximo lanzamiento, cuando ninguna ventana de Roblox tenga tomado el nombre. Hasta entonces se usa el método normal de Multi Roblox.",
+  "Reserves the name Roblox uses to allow only one window, so a teleport can't close another account. Needs Multi Roblox. Not tested with every game yet: turn it off if a window stops opening.": "Reserva el nombre que Roblox usa para permitir una sola ventana, para que un teletransporte no cierre otra cuenta. Necesita Multi Roblox. Aún no se probó en todos los juegos: desactívalo si una ventana deja de abrirse."
 }

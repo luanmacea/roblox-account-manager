@@ -1022,7 +1022,13 @@ pub(crate) async fn apply_windows_post_launch_profile(
 }
 
 #[cfg(target_os = "windows")]
-async fn ensure_multi_roblox_enabled(auto_close_conflicts: bool) -> Result<(), String> {
+async fn ensure_multi_roblox_enabled(
+    auto_close_conflicts: bool,
+    reserve_singleton_event: bool,
+) -> Result<(), String> {
+    // Experimental e desligado por padrão (ideia 3): com a opção ligada, o
+    // `enable_multi_roblox` também reserva o nome `ROBLOX_singletonEvent`.
+    platform::windows::set_singleton_reservation_enabled(reserve_singleton_event);
     let enabled = platform::windows::enable_multi_roblox()?;
     if enabled {
         return Ok(());

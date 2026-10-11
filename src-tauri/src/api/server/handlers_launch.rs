@@ -57,6 +57,9 @@ async fn handle_launch_account(
         let multi_rbx = state.settings.get_bool("General", "EnableMultiRbx");
 
         if multi_rbx {
+            windows::set_singleton_reservation_enabled(
+                state.settings.get_bool("General", "ReserveSingletonEvent"),
+            );
             match windows::enable_multi_roblox() {
                 Ok(true) => {}
                 Ok(false) => {
@@ -242,6 +245,9 @@ async fn handle_follow_user(
         let multi_rbx = state.settings.get_bool("General", "EnableMultiRbx");
 
         if multi_rbx {
+            windows::set_singleton_reservation_enabled(
+                state.settings.get_bool("General", "ReserveSingletonEvent"),
+            );
             match windows::enable_multi_roblox() {
                 Ok(true) => {}
                 Ok(false) => {

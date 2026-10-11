@@ -38,7 +38,7 @@ describe("diagnostics text", () => {
     for (const pair of backendPairs()) {
       const [id, reason] = pair.split(".");
       const text = diagnosticText({ id, reason, status: "warn" }, t);
-      const okReasons = ["found", "writable", "reachable", "none", "held", "free", "clientOpen"];
+      const okReasons = ["found", "writable", "reachable", "none", "held", "free", "clientOpen", "reserved"];
       if (!okReasons.includes(reason)) {
         expect(text.detail, pair).not.toBe("");
       }

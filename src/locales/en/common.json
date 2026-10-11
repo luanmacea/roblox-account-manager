@@ -2349,5 +2349,10 @@
   "This code expired before it was approved.": "This code expired before it was approved.",
   "Type the code above and confirm.": "Type the code above and confirm.",
   "Waiting for the code...": "Waiting for the code...",
-  "Your code": "Your code"
+  "Your code": "Your code",
+  "Experimental teleport protection is active": "Experimental teleport protection is active",
+  "Experimental teleport protection is not active yet": "Experimental teleport protection is not active yet",
+  "Experimental: keep clients open across teleports": "Experimental: keep clients open across teleports",
+  "It starts on the next launch, once no Roblox window is holding the name. Until then the usual Multi Roblox method is used.": "It starts on the next launch, once no Roblox window is holding the name. Until then the usual Multi Roblox method is used.",
+  "Reserves the name Roblox uses to allow only one window, so a teleport can't close another account. Needs Multi Roblox. Not tested with every game yet: turn it off if a window stops opening.": "Reserves the name Roblox uses to allow only one window, so a teleport can't close another account. Needs Multi Roblox. Not tested with every game yet: turn it off if a window stops opening."
 }

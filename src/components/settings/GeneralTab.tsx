@@ -466,6 +466,17 @@ export function GeneralTab({ s }: { s: UseSettingsReturn }) {
         label={<>Multi Roblox<WarningBadge>use at own risk</WarningBadge></>}
         description="Allow multiple Roblox instances to run simultaneously"
       />
+      {/* Ideia 3 (platform/windows/core.rs, `apply_singleton_reservation`):
+          experimental e desligado; o método atual continua o padrão. */}
+      {isWindows && (
+        <Toggle
+          checked={s.getBool("General", "ReserveSingletonEvent")}
+          onChange={(v) => s.setBool("General", "ReserveSingletonEvent", v)}
+          disabled={!s.getBool("General", "EnableMultiRbx")}
+          label={<>Experimental: keep clients open across teleports<WarningBadge>use at own risk</WarningBadge></>}
+          description="Reserves the name Roblox uses to allow only one window, so a teleport can't close another account. Needs Multi Roblox. Not tested with every game yet: turn it off if a window stops opening."
+        />
+      )}
       <Toggle
         checked={s.getBool("General", "BottingEnabled")}
         onChange={(v) => s.setBool("General", "BottingEnabled", v)}

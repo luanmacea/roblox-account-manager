@@ -6,6 +6,7 @@ Ajudar quem relata "clico e nada acontece" sem precisar de conversa longa:
 
 - **Checagem "o launch não faz nada"** (ideia 16 de [ideias-de-outros-gerenciadores.md](../ideias-de-outros-gerenciadores.md)): uma lista do que costuma travar um launch, cada linha com OK/aviso/problema e uma frase do que fazer.
 - **Trancar por inatividade** (ideia 27): documentado em [accounts.md](accounts.md#trancar-por-inatividade-ideia-27).
+- **Reserva experimental do singleton** (ideia 3): documentada em [launch.md](launch.md#regras-de-negócio); a checagem mostra se está ativa.
 - **Adicionar conta por Quick Login** (ideia 12): documentado em [authentication.md](authentication.md#adicionar-conta-por-quick-login-ideia-12).
 - **Reportar problema com resumo anonimizado** (ideia 28): o "Send feedback" › "Report a problem" pode levar versão, edição, sistema, a checagem e as últimas linhas do Console, sem nada que identifique a pessoa ou as contas.
 
@@ -32,6 +33,7 @@ Ajudar quem relata "clico e nada acontece" sem precisar de conversa longa:
 | `internet` | Dois hosts do Roblox (`users`, `auth` via `endpoints::host`) respondem. Qualquer resposta HTTP conta, até 404. | `reachable`, `partial` (aviso), `unreachable` (problema) |
 | `stuckProcesses` | `RobloxPlayerBeta.exe` **sem janela há 150 s ou mais**. Só Windows. | `none`, `stuck` (aviso, com `count`) |
 | `multiRoblox` | Multi Roblox ligado e quem segura a trava (`mutex_holder_label`). Só Windows. | `off`, `offWithClients` (aviso), `held`, `free`, `clientOpen`, `legacyRam` (problema) |
+| `singletonReservation` | Só aparece com o Multi Roblox **e** a opção experimental ligados: o nome `ROBLOX_singletonEvent` está reservado pelo app? | `reserved` (ok), `notReserved` (aviso: começa no próximo launch) |
 
 3. O frontend troca cada `id.reason` pela frase traduzida e mostra no topo o pior estado.
 

@@ -75,6 +75,7 @@ Todos os valores são strings; booleanos são `"true"`/`"false"` (qualquer outra
 | `AutoCloseLastProcess` | `false` | Fecha a instância anterior da mesma conta ao relançar. |
 | `AutoCloseRobloxForMultiRbx` | `false` | Fecha Roblox abertos se não conseguir ativar multi-Roblox. |
 | `EnableMultiRbx` | — (false) | Multi-Roblox; também controla a limpeza ao sair do app. |
+| `ReserveSingletonEvent` | — (false) | **Experimental.** "Keep clients open across teleports": com o Multi Roblox ligado, reserva o nome `ROBLOX_singletonEvent` com um Mutex do app para um teleporte não fechar outro cliente. Desabilitado na tela sem o Multi Roblox. Só Windows. Ver [launch.md](launch.md#regras-de-negócio). |
 | `ShowPresence` | `true` | Mostra presença na lista. |
 | `ShowAccountNameOnWindow` | `true` | Só Windows: título "conta — Roblox" (nome primeiro) em cada janela que o app acompanha (mascarado com `HideUsernames`). Ver [watcher.md](watcher.md#nome-da-conta-na-janela). |
 | `PresenceUpdateRate` | `5` | Minutos entre atualizações de presença (mínimo efetivo 30 s). |

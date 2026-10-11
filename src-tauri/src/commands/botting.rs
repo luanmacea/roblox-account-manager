@@ -221,6 +221,7 @@ async fn launch_account_for_cycle(
         auto_close_last_process,
         multi_rbx,
         auto_close_multi_conflicts,
+        reserve_singleton_event,
         start_minimized,
     ) = {
         let settings = app.state::<SettingsStore>();
@@ -230,6 +231,7 @@ async fn launch_account_for_cycle(
             settings.get_bool("General", "AutoCloseLastProcess"),
             settings.get_bool("General", "EnableMultiRbx"),
             settings.get_bool("General", "AutoCloseRobloxForMultiRbx"),
+            settings.get_bool("General", "ReserveSingletonEvent"),
             start_minimized_for_profile(&settings, launch_profile),
         )
     };
@@ -274,7 +276,7 @@ async fn launch_account_for_cycle(
     let resolved_launch = resolve_launch_job(job_id, false, "");
 
     if multi_rbx {
-        ensure_multi_roblox_enabled(auto_close_multi_conflicts).await?;
+        ensure_multi_roblox_enabled(auto_close_multi_conflicts, reserve_singleton_event).await?;
     } else {
         let _ = windows::disable_multi_roblox();
     }

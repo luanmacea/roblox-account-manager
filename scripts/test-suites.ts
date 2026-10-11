@@ -33,6 +33,7 @@ export const SUITES: Record<string, TestSuite> = {
       "launch_join_wait_tests",
       "singleton_event_tests",
       "multi_roblox_decision_tests",
+      "singleton_reservation_tests",
       "exit_cleanup_tests",
       "launch_resolve_tests",
       "launch_shared_helper_tests",
@@ -472,6 +473,8 @@ export const SUITES: Record<string, TestSuite> = {
       "app_lock_verify_tests",
       "quick_login_add_tests",
       "quick_login_command_tests",
+      "singleton_reservation_tests",
+      "multi_roblox_decision_tests",
     ],
     front: [
       "src/utils/diagnostics.test.ts",
