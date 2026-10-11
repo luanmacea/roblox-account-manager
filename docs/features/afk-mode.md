@@ -100,6 +100,36 @@ sequenceDiagram
 - **Config de sessão em andamento é derivada da sessão**, nunca copiada para o estado da tela: o efeito que relê o INI ao abrir corria contra a cópia e zerava a tecla escolhida (o botão de enviar ficava desabilitado com a sessão rodando).
 - **Parar não esquece quem estava no modo.** Com a sessão ligada, a seleção da tela acompanha as contas da sessão; quando a sessão acaba, continuam marcadas as que estavam nela — inclusive a que entrou com a sessão ligada, e também quando a tela abriu com uma sessão que já rodava —, e religar leva as mesmas. Intervalo e tecla só mudam com o modo parado, então "parar → mudar → ligar" é o caminho normal; antes a seleção voltava à de antes do start, e a conta acrescentada durante a sessão ficava de fora do próximo start sem aviso (e podia cair por inatividade). Desmarcar a última conta é a exceção: ela fica desmarcada, que é o que o usuário pediu.
 
+## Tela cheia na frente (ideia 25)
+
+Com um vídeo ou outro jogo em **tela cheia** na frente, o ciclo **espera** em
+vez de trazer a janela do Roblox (que tiraria a pessoa do que ela está vendo).
+Opção `Afk.WaitForFullscreen`, **ligada por padrão** (decisão de 11/10/2026:
+ela só protege quem está usando o PC, e a tela diz quando está esperando) —
+"Wait while a fullscreen window is in front", nas configurações dos cliques AFK.
+
+- **O que conta como tela cheia** (`afk_fullscreen_in_front` → `afk_foreground_blocks`):
+  a janela em primeiro plano não tem barra de título e cobre o monitor dela
+  inteiro (`window_mode_of` = `Fullscreen`, a mesma regra que reconhece a tela
+  cheia do Roblox) **e** não é: de um cliente que o app abriu, da área de
+  trabalho (o Explorer também cobre o monitor — `get_shell_pids`) nem do
+  próprio MultiAlt. Janela maximizada com barra de título não segura.
+  **Cliente aberto pelo site segura**: é a pessoa jogando.
+- **Só geometria de janela, nenhuma API nova:** `GetForegroundWindow`,
+  `GetWindowRect`, `MonitorFromWindow`/`GetMonitorInfoW`, o estilo da janela e
+  o PID dela (já usados pelo app). Nada de entrada é lido — o
+  `afk_input_safety_tests` continua passando.
+- **Espera e teto:** a cada tique (1 s) o laço confere de novo; sai assim que a
+  tela cheia some. Teto de **5 min** depois da hora da conta mais atrasada do
+  ciclo (`AFK_FULLSCREEN_MAX_WAIT_MS`, `afk_due_since`): o Roblox derruba quem
+  fica 20 min parado, e com o intervalo padrão de 10 min ainda sobra folga.
+  Passado o teto, o ciclo roda mesmo com a tela cheia.
+- **Na tela:** a barra de estado dos cliques AFK mostra "Waiting: a fullscreen
+  window is in front" (`waitingFullscreen` no status); o Console ganha a linha
+  "Modo AFK esperando: há uma janela em tela cheia na frente" (`step: "afk"`).
+- **Só o agendador espera.** "Enviar a tecla agora"/"Clicar agora" é ação da
+  pessoa e roda na hora. Mudar a opção vale no tique seguinte, com o modo ligado.
+
 ## PC acordado
 
 [keep_awake.rs](../../src-tauri/src/commands/keep_awake.rs) e
@@ -141,6 +171,7 @@ o app pede ao Windows para não dormir (`General.KeepPcAwake`, padrão ligado,
 | `Afk.IntervalSeconds` | `0` | Parte em segundos do mesmo intervalo (0–59). Total mínimo de 5 s, máximo de 120 min; contado do fim do ciclo. |
 | `Afk.Key` | `""` | Tecla escolhida pelo usuário, de dentro da lista fechada. Vazio = o modo não liga (chave vazia não é gravada no INI). |
 | `Afk.BeepOnCycle` | `false` | Bipe curto quando um ciclo manda tecla. |
+| `Afk.WaitForFullscreen` | `true` | Com uma janela em tela cheia de outro programa na frente, o ciclo espera (até 5 min além da hora). Ver [Tela cheia na frente](#tela-cheia-na-frente-ideia-25). |
 | `Afk.Mode` | `key` | `key` (tecla) ou `click` (clique). Qualquer outro valor vira `key`. |
 | `Afk.ClickX`, `Afk.ClickY` | `50`, `50` | Ponto padrão do clique, em % da área interna da janela. |
 | `AfkClickX`, `AfkClickY` (campos da conta) | ausentes | Ponto próprio da conta; ausente = usa o padrão. |
@@ -171,6 +202,7 @@ Suíte `afk` (`bun run t afk`):
 - `afkClickPoint.test.ts` e `ClicksTab.test.tsx`, "modo clique" — trocar de modo grava no INI e esconde a tecla, start sem tecla com modo e ponto, modo travado com sessão ligada, Marcar com contagem de 3 s gravando o padrão, erro do Marcar com a frase, ponto próprio da conta nos campos e "usar o padrão", "Clicar agora", aviso do cursor e `clickRefused`; `store.test.ts` — argumentos do start, envio manual só com as contas, e o Marcar devolvendo o código sem virar faixa de erro.
 - `win_focus_tests` (em `platform/windows/windowing.rs`) — `SW_RESTORE` só em janela minimizada (`a_maximized_or_normal_window_comes_to_the_front_as_it_is`) e devolver o foco nunca mexe no estado da janela (`giving_the_focus_back_never_changes_the_window_state`); o `afk_command_tests::the_cycle_gives_the_focus_back_without_touching_the_window_state` confere que o ciclo devolve o foco por esse caminho, e não pelo `focus_window`.
 - Foco: `a_window_that_did_not_reach_the_foreground_is_not_ready`, `a_window_in_the_foreground_is_ready_for_the_key`, `a_null_target_is_never_ready`; re-minimizar: `a_window_the_user_had_minimized_goes_back_to_minimized`; envio manual: `a_manual_send_only_reaches_accounts_that_are_in_afk_mode`; código de erro: `every_send_error_carries_a_code_and_a_message`, `the_status_tells_the_screen_which_error_it_was`.
+- Tela cheia na frente (`afk_command_tests`): `a_fullscreen_window_of_another_program_holds_the_cycle`, `the_apps_own_clients_the_desktop_and_multialt_never_hold`, `the_cycle_waits_for_the_fullscreen_window_up_to_the_cap`, `the_wait_counts_from_the_account_that_has_been_due_the_longest`, `waiting_for_a_fullscreen_window_is_on_unless_turned_off`, `the_status_tells_the_screen_it_is_waiting_for_a_fullscreen_window`; `ClicksTab.test.tsx`, "espera a tela cheia sair" — nasce ligado, grava no INI e mostra o "Waiting".
 - `ClicksTab.test.tsx` — o aviso do foco na tela (com o tempo de verdade: o foco só volta depois da última conta do ciclo, e o que o usuário digita nesse meio-tempo vai para o Roblox), só as teclas do backend, start bloqueado sem tecla/sem conta, parar sem fechar cliente, parar sem esquecer quem estava no modo, tempo decorrido (`<1m`, `12m`, `1h 5m`), "enviar agora" e o bipe nascendo desligado.
 - `ClicksTab.test.tsx`, "a tela diz a coisa certa" — contagem nunca acima do intervalo, pílula de estado, aviso ao desmarcar a última conta, singular com uma conta, e em pt o rótulo "Tecla a enviar" e os nomes acessíveis dos dois campos do intervalo; "intervalo em minutos e segundos" — leitura do INI (inclusive `0` minuto), total em segundos no start, limites dos campos, piso de 5 s bloqueando o Start e a contagem com intervalo de segundos; `store.test.ts`, "AFK mode" — o toast de início no singular e no plural.
 - `afkBeep.test.ts` — o bipe toca um oscilador curto de volume baixo, fecha o contexto no fim e nunca lança sem Web Audio.

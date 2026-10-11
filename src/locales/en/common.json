@@ -2277,5 +2277,8 @@
   "Auto-reconnect for 1 selected": "Auto-reconnect for 1 selected",
   "Not in a game yet": "Not in a game yet",
   "Playing": "Playing",
-  "Public server": "Public server"
+  "Public server": "Public server",
+  "Wait while a fullscreen window is in front": "Wait while a fullscreen window is in front",
+  "Waiting: a fullscreen window is in front": "Waiting: a fullscreen window is in front",
+  "With a video or another game in fullscreen in front, the cycle waits instead of taking the focus, for up to 5 minutes past the account's turn.": "With a video or another game in fullscreen in front, the cycle waits instead of taking the focus, for up to 5 minutes past the account's turn."
 }

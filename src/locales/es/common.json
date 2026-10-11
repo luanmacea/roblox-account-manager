@@ -2277,5 +2277,8 @@
   "Auto-reconnect for 1 selected": "Reconexión automática de la 1 marcada",
   "Not in a game yet": "Aún fuera de un juego",
   "Playing": "Jugando",
-  "Public server": "Servidor público"
+  "Public server": "Servidor público",
+  "Wait while a fullscreen window is in front": "Esperar mientras haya una ventana en pantalla completa delante",
+  "Waiting: a fullscreen window is in front": "Esperando: hay una ventana en pantalla completa delante",
+  "With a video or another game in fullscreen in front, the cycle waits instead of taking the focus, for up to 5 minutes past the account's turn.": "Con un video u otro juego en pantalla completa delante, el ciclo espera en lugar de quitar el foco, hasta 5 minutos después del turno de la cuenta."
 }

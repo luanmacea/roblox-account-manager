@@ -278,6 +278,12 @@ export interface AfkStatus {
   clickX: number;
   clickY: number;
   accounts: AfkAccountStatus[];
+  /**
+   * O ciclo está na hora mas espera: há uma janela em tela cheia de outro
+   * programa na frente (`Afk.WaitForFullscreen`). O backend sempre manda;
+   * opcional só para os retratos antigos dos testes.
+   */
+  waitingFullscreen?: boolean;
 }
 
 export interface AfkStartConfig {

@@ -192,6 +192,7 @@ Com `General.BottingUseSharedClientProfile=true`, Main e Alt usam o perfil Norma
 | `IntervalSeconds` | `0` | Parte em segundos do mesmo intervalo (0–59). O total (mínimo 5 s, máximo 120 min) conta do **fim** de cada ciclo. |
 | `Key` | `""` | Tecla escolhida pelo usuário, de dentro da lista fechada do AFK mode. Vazio = o modo não liga. |
 | `BeepOnCycle` | `false` | Bipe curto (sintetizado, sem arquivo de áudio) quando um ciclo de envio termina. |
+| `WaitForFullscreen` | `true` | "Wait while a fullscreen window is in front": com um vídeo ou outro jogo em tela cheia na frente, o ciclo espera em vez de tirar o foco, até 5 min além da hora da conta. Só `"false"` desliga. |
 
 ### `[Generator]` / `[BloxGen]`
 

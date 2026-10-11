@@ -117,6 +117,7 @@ const baseHandler: InvokeHandler = (cmd, args) => {
         clickX: 50,
         clickY: 50,
         accounts: [],
+        waitingFullscreen: false,
       };
     // Auto Rejoin parado, idem (`bottingStatus.userIds`).
     case "get_botting_mode_status":
@@ -472,6 +473,7 @@ function afkHandler(
       mode: session.mode,
       clickX: session.clickX,
       clickY: session.clickY,
+      waitingFullscreen: false,
       accounts: [...session.accounts.values()]
         .sort((a, b) => a.userId - b.userId)
         .map((entry) => ({

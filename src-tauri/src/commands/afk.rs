@@ -525,6 +525,111 @@ fn afk_should_restore_focus(stopping: bool, focus_taken: bool) -> bool {
     !stopping && focus_taken
 }
 
+// ── tela cheia na frente (ideia 25) ─────────────────────────────────────────
+//
+// Com um vídeo ou outro jogo em tela cheia na frente, trazer a janela do Roblox
+// tiraria a pessoa do que ela está vendo. O ciclo espera (confere de novo a cada
+// tique) até a tela cheia sair — ou até o teto, para a conta não cair por
+// inatividade. Só geometria de janela: qual está na frente, se ela cobre o
+// monitor dela inteiro e de que processo ela é. Nada de entrada é lido.
+
+/// Quanto o ciclo espera, no máximo, depois da hora de uma conta. O Roblox
+/// derruba quem fica parado 20 min; com o intervalo padrão de 10 min, 5 min de
+/// espera ainda deixam folga.
+const AFK_FULLSCREEN_MAX_WAIT_MS: i64 = 5 * 60_000;
+
+/// `Afk.WaitForFullscreen`: ligada por padrão (protege quem está vendo algo em
+/// tela cheia); só `"false"` desliga.
+fn afk_wait_for_fullscreen_enabled(raw: &str) -> bool {
+    raw.trim() != "false"
+}
+
+/// A janela da frente segura o ciclo? Só se cobre o monitor inteiro (a tela
+/// cheia de um vídeo ou de outro jogo) e não é de um cliente que o app abriu,
+/// da área de trabalho (que também cobre o monitor) nem do próprio MultiAlt.
+/// Cliente aberto pelo site **segura**: é a pessoa jogando.
+fn afk_foreground_blocks(
+    foreground_pid: Option<u32>,
+    covers_monitor: bool,
+    app_client_pids: &HashSet<u32>,
+    shell_pids: &HashSet<u32>,
+    own_pid: u32,
+) -> bool {
+    let Some(pid) = foreground_pid else {
+        return false;
+    };
+    covers_monitor && pid != own_pid && !app_client_pids.contains(&pid) && !shell_pids.contains(&pid)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum AfkGate {
+    Send,
+    Wait,
+}
+
+/// Envia agora ou espera a tela cheia sair? `due_since_ms`: desde quando a
+/// conta mais atrasada do ciclo está na hora.
+fn afk_fullscreen_gate(
+    enabled: bool,
+    fullscreen_in_front: bool,
+    due_since_ms: i64,
+    now_ms: i64,
+    max_wait_ms: i64,
+) -> AfkGate {
+    if !enabled || !fullscreen_in_front {
+        return AfkGate::Send;
+    }
+    if now_ms.saturating_sub(due_since_ms) >= max_wait_ms {
+        AfkGate::Send
+    } else {
+        AfkGate::Wait
+    }
+}
+
+/// Desde quando o alvo mais atrasado está na hora (último envio + intervalo).
+fn afk_due_since(
+    accounts: &HashMap<i64, AfkAccountRuntime>,
+    targets: &[i64],
+    interval_ms: i64,
+    now_ms: i64,
+) -> i64 {
+    targets
+        .iter()
+        .filter_map(|uid| accounts.get(uid))
+        .map(|entry| afk_next_send_at_ms(entry.last_send_at_ms, interval_ms))
+        .min()
+        .unwrap_or(now_ms)
+}
+
+/// A janela da frente agora segura o ciclo? Primeiro o barato (cobre o
+/// monitor?); só então a lista de processos.
+#[cfg(target_os = "windows")]
+fn afk_fullscreen_in_front() -> bool {
+    use platform::windows;
+    let foreground = windows::get_foreground_hwnd();
+    if foreground.is_null() {
+        return false;
+    }
+    let covers = windows::window_mode_of(foreground) == Some(windows::WindowMode::Fullscreen);
+    if !covers {
+        return false;
+    }
+    let app_clients: HashSet<u32> = windows::tracker()
+        .get_all()
+        .into_iter()
+        .filter(|process| !process.adopted)
+        .map(|process| process.pid)
+        .collect();
+    let shell: HashSet<u32> = windows::get_shell_pids().into_iter().collect();
+    afk_foreground_blocks(
+        windows::window_pid(foreground),
+        covers,
+        &app_clients,
+        &shell,
+        std::process::id(),
+    )
+}
+
 #[derive(Debug, Clone, serde::Serialize, Default)]
 #[serde(rename_all = "camelCase")]
 struct AfkAccountStatus {
@@ -552,6 +657,9 @@ struct AfkStatusPayload {
     click_x: f64,
     click_y: f64,
     accounts: Vec<AfkAccountStatus>,
+    /// O ciclo está na hora mas espera: há uma janela em tela cheia na frente
+    /// (`afk_fullscreen_gate`).
+    waiting_fullscreen: bool,
 }
 
 impl Default for AfkStatusPayload {
@@ -606,6 +714,8 @@ struct AfkSession {
     started_at_ms: i64,
     config: Arc<Mutex<AfkConfig>>,
     accounts: Arc<Mutex<HashMap<i64, AfkAccountRuntime>>>,
+    /// Ciclo segurado por uma janela em tela cheia na frente.
+    waiting_fullscreen: Arc<AtomicBool>,
 }
 
 #[cfg(target_os = "windows")]
@@ -695,6 +805,7 @@ fn new_afk_session(
         started_at_ms,
         config: Arc::new(Mutex::new(config)),
         accounts: Arc::new(Mutex::new(accounts)),
+        waiting_fullscreen: Arc::new(AtomicBool::new(false)),
     }
 }
 
@@ -731,6 +842,7 @@ fn afk_status_from_parts(
         click_x: default_point.x_pct,
         click_y: default_point.y_pct,
         accounts: rows,
+        waiting_fullscreen: false,
     }
 }
 
@@ -752,14 +864,16 @@ fn afk_status_from(session: &AfkSession) -> AfkStatusPayload {
         .map(|map| map.clone())
         .unwrap_or_default();
 
-    afk_status_from_parts(
+    let mut status = afk_status_from_parts(
         Some(session.started_at_ms),
         config.interval_seconds,
         &config.key,
         config.mode,
         config.default_point,
         &accounts,
-    )
+    );
+    status.waiting_fullscreen = session.waiting_fullscreen.load(Ordering::Relaxed);
+    status
 }
 
 #[cfg(target_os = "windows")]
@@ -948,7 +1062,40 @@ async fn run_afk_session(app: tauri::AppHandle, session: AfkSession) {
             break;
         };
 
-        if !targets.is_empty() {
+        // Tela cheia de outro programa na frente: espera em vez de roubar o
+        // foco (ideia 25). Confere de novo a cada tique, até o teto.
+        let gate = if targets.is_empty() {
+            AfkGate::Send
+        } else {
+            let enabled = afk_wait_for_fullscreen_enabled(
+                &app.state::<SettingsStore>().get_string("Afk", "WaitForFullscreen"),
+            );
+            let in_front = enabled
+                && tokio::task::spawn_blocking(afk_fullscreen_in_front)
+                    .await
+                    .unwrap_or(false);
+            let now = now_ms();
+            let due_since = session
+                .accounts
+                .lock()
+                .map(|map| afk_due_since(&map, &targets, interval_ms, now))
+                .unwrap_or(now);
+            afk_fullscreen_gate(enabled, in_front, due_since, now, AFK_FULLSCREEN_MAX_WAIT_MS)
+        };
+        let waiting = gate == AfkGate::Wait;
+        if session.waiting_fullscreen.swap(waiting, Ordering::Relaxed) != waiting {
+            if waiting {
+                emit_session_log(
+                    &app,
+                    "info",
+                    "afk",
+                    String::from("Modo AFK esperando: há uma janela em tela cheia na frente"),
+                );
+            }
+            emit_afk_status(&app);
+        }
+
+        if !targets.is_empty() && !waiting {
             let action = afk_cycle_action(&app, &config, &targets);
             let stop = session.stop_flag.clone();
             let cycle_targets = targets.clone();
@@ -1696,6 +1843,70 @@ mod afk_command_tests {
         assert!(json["accounts"][0]["lastError"].is_string());
     }
 
+    // ── tela cheia na frente (ideia 25) ────────────────────────────────────
+
+    fn pids(list: &[u32]) -> HashSet<u32> {
+        list.iter().copied().collect()
+    }
+
+    #[test]
+    fn a_fullscreen_window_of_another_program_holds_the_cycle() {
+        // Um vídeo ou outro jogo em tela cheia: PID que não é cliente do app,
+        // nem a área de trabalho, nem o próprio MultiAlt.
+        assert!(afk_foreground_blocks(Some(30), true, &pids(&[10]), &pids(&[20]), 99));
+    }
+
+    #[test]
+    fn a_window_that_does_not_cover_its_monitor_never_holds() {
+        assert!(!afk_foreground_blocks(Some(30), false, &pids(&[10]), &pids(&[20]), 99));
+    }
+
+    #[test]
+    fn the_apps_own_clients_the_desktop_and_multialt_never_hold() {
+        let clients = pids(&[10]);
+        let shell = pids(&[20]);
+        assert!(!afk_foreground_blocks(Some(10), true, &clients, &shell, 99), "a client the app opened");
+        assert!(!afk_foreground_blocks(Some(20), true, &clients, &shell, 99), "the desktop covers the monitor too");
+        assert!(!afk_foreground_blocks(Some(99), true, &clients, &shell, 99), "MultiAlt itself");
+        assert!(!afk_foreground_blocks(None, true, &clients, &shell, 99), "no window in front");
+    }
+
+    #[test]
+    fn the_cycle_waits_for_the_fullscreen_window_up_to_the_cap() {
+        let due = 1_000;
+        let cap = AFK_FULLSCREEN_MAX_WAIT_MS;
+        assert_eq!(afk_fullscreen_gate(true, true, due, due + 60_000, cap), AfkGate::Wait);
+        assert_eq!(afk_fullscreen_gate(true, true, due, due + cap - 1, cap), AfkGate::Wait);
+        // Passou do teto: a conta não pode cair por inatividade esperando.
+        assert_eq!(afk_fullscreen_gate(true, true, due, due + cap, cap), AfkGate::Send);
+        // Sem tela cheia, ou com a opção desligada, segue como sempre.
+        assert_eq!(afk_fullscreen_gate(true, false, due, due + 60_000, cap), AfkGate::Send);
+        assert_eq!(afk_fullscreen_gate(false, true, due, due + 60_000, cap), AfkGate::Send);
+    }
+
+    #[test]
+    fn the_wait_counts_from_the_account_that_has_been_due_the_longest() {
+        let accounts = session_with(&[(11, 5_000), (22, 1_000), (33, 9_000)]);
+        assert_eq!(afk_due_since(&accounts, &[11, 22], 10_000, 99_999), 11_000);
+        // Sem alvo conhecido, conta de agora.
+        assert_eq!(afk_due_since(&accounts, &[44], 10_000, 99_999), 99_999);
+    }
+
+    #[test]
+    fn waiting_for_a_fullscreen_window_is_on_unless_turned_off() {
+        assert!(afk_wait_for_fullscreen_enabled(""));
+        assert!(afk_wait_for_fullscreen_enabled("true"));
+        assert!(!afk_wait_for_fullscreen_enabled("false"));
+    }
+
+    #[test]
+    fn the_status_tells_the_screen_it_is_waiting_for_a_fullscreen_window() {
+        let mut status = AfkStatusPayload::default();
+        assert_eq!(serde_json::to_value(&status).unwrap()["waitingFullscreen"], false);
+        status.waiting_fullscreen = true;
+        assert_eq!(serde_json::to_value(&status).unwrap()["waitingFullscreen"], true);
+    }
+
     /// Defeito que o upstream teve e que aqui não pode nascer: o prazo do
     /// primeiro envio só aparecia **depois** do primeiro ciclo, e quem ligava o
     /// modo passava o intervalo inteiro olhando um "--", sem saber se pegou.
@@ -1755,6 +1966,7 @@ mod afk_command_tests {
                 last_error: None,
                 last_error_code: None,
             }],
+            waiting_fullscreen: false,
         };
         let json = serde_json::to_value(&status).unwrap();
         assert_eq!(json["active"], true);
