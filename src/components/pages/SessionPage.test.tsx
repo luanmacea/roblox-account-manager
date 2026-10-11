@@ -244,6 +244,28 @@ describe("SessionPage — summary", () => {
     expect(summary.getByText(/asks Windows to free its memory first/)).toBeInTheDocument();
     await user.selectOptions(select, "2048");
     expect(store.updateSetting).toHaveBeenCalledWith("Optimization", "MemoryLimit", "2048");
+
+    // Fechar é opção própria, ao lado do limite, desligada por padrão.
+    const close = summary.getByRole("switch", { name: "Close a client that stays over its limit" });
+    expect(close).toHaveAttribute("aria-checked", "false");
+    expect(summary.queryByText(/Close If Memory Low/)).not.toBeInTheDocument();
+    await user.click(close);
+    expect(store.updateSetting).toHaveBeenCalledWith("Optimization", "CloseOverMemoryLimit", "true");
+  });
+
+  it("shows the close-over-limit switch on when it was turned on", () => {
+    renderWithStore(<SessionPage active onLeave={vi.fn()} />, {
+      accounts: ACCOUNTS,
+      launchQueue: null,
+      launchedByProgram: new Set<number>(),
+      platformCapabilities: makePlatformCapabilities({ supportsMemoryTrim: true }),
+      settings: { Optimization: { CloseOverMemoryLimit: "true" } },
+      ...storeActions(),
+    });
+    expect(screen.getByRole("switch", { name: "Close a client that stays over its limit" })).toHaveAttribute(
+      "aria-checked",
+      "true"
+    );
   });
 
   it("has no memory limit in the summary without the memory-trim build", () => {

@@ -913,6 +913,25 @@ describe("OptimizationTab", () => {
     expect(screen.getByText(/asks Windows to free the client's memory first/)).toBeInTheDocument();
   });
 
+  /**
+   * Fechar quem continua acima do limite tem opção própria, ao lado do limite
+   * e desligada por padrão — antes era o "Close If Memory Low" do Watcher, que
+   * liga também a regra de memória baixa.
+   */
+  it("has its own switch to close a client that stays over the limit, off by default", async () => {
+    stored = {};
+    setStore({
+      platformCapabilities: { os: "windows", supportsMemoryTrim: true } as PlatformCapabilities,
+    });
+    renderTab((s) => <OptimizationTab s={s} />);
+    const toggle = await screen.findByRole("switch", { name: "Close a client that stays over its limit" });
+    expect(toggle).toHaveAttribute("aria-checked", "false");
+    expect(screen.queryByText(/Close If Memory Low/)).not.toBeInTheDocument();
+    await userEvent.click(toggle);
+    await expectSaved("Optimization", "CloseOverMemoryLimit", "true");
+    expect(invokeMock).not.toHaveBeenCalledWith("update_setting", expect.objectContaining({ key: "CloseRbxMemory" }));
+  });
+
   it("hides the memory limit when the build cannot free memory", async () => {
     renderOptimization({});
     await screen.findByRole("switch", { name: /Follow the window in use/ });

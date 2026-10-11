@@ -239,7 +239,7 @@ describe("WatcherTab explains the system it turns on", () => {
     renderWatcher();
     expect(
       await screen.findByText(
-        "Closes a client whose memory drops below the threshold, the usual sign of one that froze. With a memory limit set, it also closes a client that stays over it after MultiAlt freed its memory."
+        "Closes a client whose memory drops below the threshold, the usual sign of one that froze."
       )
     ).toBeInTheDocument();
   });

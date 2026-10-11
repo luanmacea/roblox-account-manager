@@ -141,7 +141,7 @@ export function SessionPage({ active, onLeave }: { active: boolean; onLeave: () 
               <h2 className="text-[12px] font-semibold text-[var(--panel-fg)]">{t("Memory limit")}</h2>
               <p className="mt-1.5 text-[12px] leading-snug text-[var(--panel-muted)]">
                 {t(
-                  "A client over this limit: MultiAlt asks Windows to free its memory first, and closes it only if it stays over and the Watcher's Close If Memory Low is on. Only windows MultiAlt opened; each account can change it in the In game list."
+                  "A client over this limit: MultiAlt asks Windows to free its memory first. Only windows MultiAlt opened; each account can change it in the In game list."
                 )}
               </p>
               <div className="mt-2">
@@ -150,6 +150,16 @@ export function SessionPage({ active, onLeave }: { active: boolean; onLeave: () 
                   onChange={(mb) =>
                     void store.updateSetting(MEMORY_LIMIT_SETTING.section, MEMORY_LIMIT_SETTING.key, String(mb))
                   }
+                />
+              </div>
+              <div className="mt-1">
+                <Toggle
+                  checked={store.settings?.Optimization?.CloseOverMemoryLimit === "true"}
+                  onChange={(v) =>
+                    void store.updateSetting("Optimization", "CloseOverMemoryLimit", v ? "true" : "false")
+                  }
+                  label="Close a client that stays over its limit"
+                  description="If a client is still over its limit a minute after MultiAlt freed its memory, it is closed. Only that client, only windows MultiAlt opened. Off: MultiAlt only frees memory and never closes."
                 />
               </div>
             </section>

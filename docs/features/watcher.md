@@ -306,7 +306,10 @@ paginação e voltam quando o cliente precisar; nada é perdido).
     site não tem seletor nem entra no lote;
   - **o padrão** — no cartão "Memory limit" do resumo da página Session e em
     Settings › Optimization › "While you play" ("Memory limit per client"),
-    mesma setting.
+    mesma setting;
+  - **fechar ou não** — "Close a client that stays over its limit"
+    (`Optimization.CloseOverMemoryLimit`, **desligado por padrão**), logo abaixo
+    do padrão nos dois lugares.
 - **Quando age** (`memory_ceiling_step`, a cada 2 s no laço do monitor de quedas,
   funciona **com o Watcher desligado também**):
   1. cliente aberto há menos de 30 s: nada (carregando, a memória sobe e desce);
@@ -316,26 +319,38 @@ paginação e voltam quando o cliente precisar; nada é perdido).
      "memory"`: "Memória em 2500 MB, acima do limite de 2048 MB: pedi ao Windows
      para liberar");
   4. voltou para baixo: zera — uma subida mais tarde libera de novo, não fecha;
-  5. ainda acima **60 s depois** de liberar: **fecha só se** o Watcher estiver
-     ligado (`Watcher.Enabled`) **e** a opção de fechar por memória dele
-     (`Watcher.CloseRbxMemory`, "Close If Memory Low") também — é a mesma opção
-     que já fechava por memória baixa, e a descrição dela diz isso agora. Fecha
+  5. ainda acima **60 s depois** de liberar: **fecha só se** a opção própria
+     `Optimization.CloseOverMemoryLimit` estiver ligada (`memory_close_allowed`),
+     com ou sem o Watcher ligado. Fecha
      pelo `kill_for_user` do Watcher (só aquele cliente), com toast "Closed …:
      memory stayed over its limit after it was freed" (evento
      `roblox-memory-limit`) e linha no Console;
   6. sem a opção de fechar: libera de novo a cada minuto, e nunca fecha.
+- **A opção de fechar é separada do Watcher** (11/10/2026). Até aqui o teto
+  reaproveitava o "Close If Memory Low" do Watcher (`Watcher.Enabled` +
+  `Watcher.CloseRbxMemory`) para poder fechar quem continuava acima — e ligar
+  isso ligava junto a regra de memória **baixa**, que não tem nada a ver (fecha
+  cliente travado). Agora `Watcher.CloseRbxMemory` só vale para a memória baixa,
+  e o teto tem `Optimization.CloseOverMemoryLimit`, desligado por padrão.
+  **Sem migração:** o teto nunca saiu numa versão publicada (nasceu nas branches
+  do pacote Conforto), então não há usuário com o comportamento antigo a
+  preservar; e copiar o `CloseRbxMemory` para a chave nova ligaria o fechamento
+  por limite em quem só queria a regra de memória baixa. Quem quer fechar liga a
+  opção nova.
 - **Nunca toca** cliente aberto pelo site (adotado), cliente de outra conta, nem
   PID que não é mais do cliente rastreado (o fechar é o `kill_for_user`, que
   confere se o PID ainda é um Roblox).
 - Testes: `memory_ceiling_tests` (limite da conta x padrão, `0`/off, faixa,
   carência, liberar → esperar → fechar, sem a opção de fechar, voltar para baixo,
   janela em uso, monitor com dublê do sistema, PID novo da mesma conta, linha do
-  Console, visão em camelCase), `win_memory_trim_tests` (PID 0, API só no
+  Console, visão em camelCase; a opção de fechar desligada por padrão, o "Close
+  If Memory Low" do Watcher não fechando mais, a opção própria valendo com o
+  Watcher desligado), `win_memory_trim_tests` (PID 0, API só no
   `memory_trim.rs` e atrás da feature), `platform_info_tests`
   (`supportsMemoryTrim`), `memoryLimit.test.ts`, `SessionPanel.test.tsx`
   ("limite de memória por cliente": seletor, campo gravado, padrão, custom, âmbar,
   site sem seletor, sem a feature, lote), `SessionPage.test.tsx` e
-  `settingsTabs.test.tsx` (o padrão).
+  `settingsTabs.test.tsx` (o padrão e a opção de fechar).
 
 ## Configurações relacionadas
 
@@ -346,7 +361,7 @@ Seção `[Watcher]`:
 | `Enabled` | `false` | — | Frontend inicia/para o watcher |
 | `ScanInterval` | `6` (s) | 1–3600 | Intervalo de varredura |
 | `ReadInterval` | `250` (ms) | 50–60000 | Só macOS: leitura de logs |
-| `CloseRbxMemory` | `false` | — | Liga a regra de memória baixa; com o [teto de memória](#teto-de-memória), também fecha o cliente que continua acima do limite depois de liberar |
+| `CloseRbxMemory` | `false` | — | Liga a regra de memória baixa (só ela; o [teto de memória](#teto-de-memória) tem `Optimization.CloseOverMemoryLimit`) |
 | `MemoryLowValue` | `200` (MB) | 1–16384 | Limite inferior de working set |
 | `CloseRbxWindowTitle` | `false` | — | Liga a regra de título |
 | `ExpectedWindowTitle` | `Roblox` | — | Título esperado exato |

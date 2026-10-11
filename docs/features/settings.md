@@ -143,7 +143,7 @@ Todos os valores são strings; booleanos são `"true"`/`"false"` (qualquer outra
 | `ExitIfNoConnection` / `NoConnectionTimeout` | `false` / `60` | fecha sem conexão após N s |
 | `ExitOnBeta` | `false` | fecha se detectar Roblox beta |
 | `CloseIfNotResponding` | `false` | fecha o cliente do app que fica "Não respondendo" por 30 s |
-| `CloseRbxMemory` / `MemoryLowValue` | `false` / `200` | fecha abaixo de N MB; com o teto de memória (`Optimization.MemoryLimit`), também fecha quem continua acima dele depois de liberar |
+| `CloseRbxMemory` / `MemoryLowValue` | `false` / `200` | fecha abaixo de N MB (só isso: fechar acima do teto de memória é `Optimization.CloseOverMemoryLimit`) |
 | `CloseRbxWindowTitle` / `ExpectedWindowTitle` | `false` / `Roblox` | fecha se o título divergir |
 | `SaveWindowPositions` | `false` | salva posição da janela nos `Fields` da conta |
 
@@ -169,7 +169,8 @@ Fora dos perfis, uma chave para todos os clientes (cartão **While you play** da
 | Chave | Default | Significado |
 |---|---|---|
 | `FollowFocus` | `false` | Otimização que segue o foco: o cliente em uso (que o app abriu) a toda velocidade, os outros com a política de fundo; 35 s de carência para cliente novo. |
-| `MemoryLimit` | `0` | Teto de memória de cada cliente que o app abriu, em MB (`0` = sem limite; aceito de 256 a 65536). Acima dele o app pede ao Windows para liberar a memória do cliente; fecha só com `Watcher.Enabled` + `Watcher.CloseRbxMemory`. A conta pode ter o seu (campo `MemoryLimit`, página Session). Também muda no resumo da página Session. Feature `memory-trim`, nas duas edições. Ver [watcher.md](watcher.md#teto-de-memória). |
+| `MemoryLimit` | `0` | Teto de memória de cada cliente que o app abriu, em MB (`0` = sem limite; aceito de 256 a 65536). Acima dele o app pede ao Windows para liberar a memória do cliente; fecha só com `CloseOverMemoryLimit`. A conta pode ter o seu (campo `MemoryLimit`, página Session). Também muda no resumo da página Session. Feature `memory-trim`, nas duas edições. Ver [watcher.md](watcher.md#teto-de-memória). |
+| `CloseOverMemoryLimit` | `false` | "Close a client that stays over its limit": fecha o cliente que continua acima do `MemoryLimit` (o da conta ou o padrão) um minuto depois de liberar. Desligado, o app só libera e nunca fecha. Não depende do Watcher; ao lado do limite em Settings › Optimization e no resumo da página Session. Até 11/10/2026 o fechamento usava `Watcher.CloseRbxMemory` (sem migração — ver [watcher.md](watcher.md#teto-de-memória)). |
 | `MuteBackgroundClients` | `false` | Fundo mudo: só o cliente em uso faz som (mixer do Windows). Só vale no binário com a feature `live-audio` (nas duas edições, via `standard`); sem ela a opção nem aparece. |
 
 Com `General.BottingUseSharedClientProfile=true`, Main e Alt usam o perfil Normal (`effective_launch_profile` em [launch_shared.rs](../../src-tauri/src/commands/launch_shared.rs)).

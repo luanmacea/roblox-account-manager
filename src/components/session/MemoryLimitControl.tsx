@@ -14,7 +14,8 @@ import {
  * (Painel de Sessão): um seletor nativo — padrão, sem limite, os tamanhos
  * comuns, o próprio da conta e "Custom…". Grava no campo `MemoryLimit` da
  * conta (vale na hora, sem relançar, e nos próximos launches). Passou do
- * limite, o app libera a memória primeiro; fecha só com a opção do Watcher.
+ * limite, o app libera a memória primeiro; fecha só com a opção própria
+ * `Optimization.CloseOverMemoryLimit` (desligada por padrão).
  */
 
 /** `null` = volta ao padrão; `0` = sem limite; MB. */

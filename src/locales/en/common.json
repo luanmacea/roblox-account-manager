@@ -2427,11 +2427,8 @@
   "With a video or another game in fullscreen in front, the cycle waits instead of taking the focus, for up to 5 minutes past the account's turn.": "With a video or another game in fullscreen in front, the cycle waits instead of taking the focus, for up to 5 minutes past the account's turn.",
   "Puts back your own FPS, volume, graphics, window and FastFlags when MultiAlt closes and no client it opened is still running, so the game you open from the website is not left with them.": "Puts back your own FPS, volume, graphics, window and FastFlags when MultiAlt closes and no client it opened is still running, so the game you open from the website is not left with them.",
   "Restore Roblox settings when MultiAlt closes": "Restore Roblox settings when MultiAlt closes",
-  "A client over this limit: MultiAlt asks Windows to free its memory first, and closes it only if it stays over and the Watcher's Close If Memory Low is on. Only windows MultiAlt opened; each account can change it in the In game list.": "A client over this limit: MultiAlt asks Windows to free its memory first, and closes it only if it stays over and the Watcher's Close If Memory Low is on. Only windows MultiAlt opened; each account can change it in the In game list.",
-  "Above it, MultiAlt asks Windows to free the client's memory first; it closes the client only if it stays over a minute later and the Watcher's Close If Memory Low is on. 0 = no limit. Each account can have its own on the Session page.": "Above it, MultiAlt asks Windows to free the client's memory first; it closes the client only if it stays over a minute later and the Watcher's Close If Memory Low is on. 0 = no limit. Each account can have its own on the Session page.",
   "Above the limit, MultiAlt first asks Windows to free the client's memory.": "Above the limit, MultiAlt first asks Windows to free the client's memory.",
   "Closed {{name}}: memory stayed over its limit after it was freed": "Closed {{name}}: memory stayed over its limit after it was freed",
-  "Closes a client whose memory drops below the threshold, the usual sign of one that froze. With a memory limit set, it also closes a client that stays over it after MultiAlt freed its memory.": "Closes a client whose memory drops below the threshold, the usual sign of one that froze. With a memory limit set, it also closes a client that stays over it after MultiAlt freed its memory.",
   "Custom…": "Custom…",
   "Following the default ({{limit}}). Above the limit, MultiAlt first asks Windows to free the client's memory.": "Following the default ({{limit}}). Above the limit, MultiAlt first asks Windows to free the client's memory.",
   "Memory in use now.": "Memory in use now.",
@@ -2451,5 +2448,10 @@
   "Set for this account. Above the limit, MultiAlt first asks Windows to free the client's memory.": "Set for this account. Above the limit, MultiAlt first asks Windows to free the client's memory.",
   "Choose…": "Choose…",
   "Default limit": "Default",
-  "Default: {{limit}}": "Default: {{limit}}"
+  "Default: {{limit}}": "Default: {{limit}}",
+  "A client over this limit: MultiAlt asks Windows to free its memory first. Only windows MultiAlt opened; each account can change it in the In game list.": "A client over this limit: MultiAlt asks Windows to free its memory first. Only windows MultiAlt opened; each account can change it in the In game list.",
+  "Above it, MultiAlt asks Windows to free the client's memory first, and again every minute while it stays over. 0 = no limit. Each account can have its own on the Session page.": "Above it, MultiAlt asks Windows to free the client's memory first, and again every minute while it stays over. 0 = no limit. Each account can have its own on the Session page.",
+  "Close a client that stays over its limit": "Close a client that stays over its limit",
+  "Closes a client whose memory drops below the threshold, the usual sign of one that froze.": "Closes a client whose memory drops below the threshold, the usual sign of one that froze.",
+  "If a client is still over its limit a minute after MultiAlt freed its memory, it is closed. Only that client, only windows MultiAlt opened. Off: MultiAlt only frees memory and never closes.": "If a client is still over its limit a minute after MultiAlt freed its memory, it is closed. Only that client, only windows MultiAlt opened. Off: MultiAlt only frees memory and never closes."
 }

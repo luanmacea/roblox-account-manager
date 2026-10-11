@@ -592,15 +592,25 @@ function WindowInUseSection({ s }: { s: UseSettingsReturn }) {
         />
       ) : null}
       {memoryTrim ? (
-        <NumberField
-          value={s.getNumber("Optimization", "MemoryLimit", 0)}
-          onChange={(v) => s.setNumber("Optimization", "MemoryLimit", v)}
-          label="Memory limit per client"
-          description="Above it, MultiAlt asks Windows to free the client's memory first; it closes the client only if it stays over a minute later and the Watcher's Close If Memory Low is on. 0 = no limit. Each account can have its own on the Session page."
-          min={0}
-          max={65536}
-          suffix="MB"
-        />
+        <>
+          <NumberField
+            value={s.getNumber("Optimization", "MemoryLimit", 0)}
+            onChange={(v) => s.setNumber("Optimization", "MemoryLimit", v)}
+            label="Memory limit per client"
+            description="Above it, MultiAlt asks Windows to free the client's memory first, and again every minute while it stays over. 0 = no limit. Each account can have its own on the Session page."
+            min={0}
+            max={65536}
+            suffix="MB"
+          />
+          {/* Opção própria (11/10/2026): antes era o "Close If Memory Low" do
+              Watcher, que liga também a regra de memória baixa. */}
+          <Toggle
+            checked={s.getBool("Optimization", "CloseOverMemoryLimit")}
+            onChange={(v) => s.setBool("Optimization", "CloseOverMemoryLimit", v)}
+            label="Close a client that stays over its limit"
+            description="If a client is still over its limit a minute after MultiAlt freed its memory, it is closed. Only that client, only windows MultiAlt opened. Off: MultiAlt only frees memory and never closes."
+          />
+        </>
       ) : null}
     </div>
   );
