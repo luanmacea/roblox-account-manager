@@ -2433,8 +2433,6 @@
   "Closed {{name}}: memory stayed over its limit after it was freed": "Closed {{name}}: memory stayed over its limit after it was freed",
   "Closes a client whose memory drops below the threshold, the usual sign of one that froze. With a memory limit set, it also closes a client that stays over it after MultiAlt freed its memory.": "Closes a client whose memory drops below the threshold, the usual sign of one that froze. With a memory limit set, it also closes a client that stays over it after MultiAlt freed its memory.",
   "Custom…": "Custom…",
-  "Default ({{limit}})": "Default ({{limit}})",
-  "Default (no limit)": "Default (no limit)",
   "Following the default ({{limit}}). Above the limit, MultiAlt first asks Windows to free the client's memory.": "Following the default ({{limit}}). Above the limit, MultiAlt first asks Windows to free the client's memory.",
   "Memory in use now.": "Memory in use now.",
   "Memory in use now. Limit: {{limit}}.": "Memory in use now. Limit: {{limit}}.",
@@ -2451,5 +2449,7 @@
   "Over its limit of {{limit}}: MultiAlt asked Windows to free this client's memory.": "Over its limit of {{limit}}: MultiAlt asked Windows to free this client's memory.",
   "Over its limit of {{limit}}.": "Over its limit of {{limit}}.",
   "Set for this account. Above the limit, MultiAlt first asks Windows to free the client's memory.": "Set for this account. Above the limit, MultiAlt first asks Windows to free the client's memory.",
-  "Choose a limit": "Choose a limit"
+  "Choose…": "Choose…",
+  "Default limit": "Default",
+  "Default: {{limit}}": "Default: {{limit}}"
 }

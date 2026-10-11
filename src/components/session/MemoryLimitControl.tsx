@@ -20,16 +20,21 @@ import {
 /** `null` = volta ao padrão; `0` = sem limite; MB. */
 export type MemoryLimitValue = number | null;
 
-/** As opções do seletor (a da linha e a do lote). */
+/**
+ * As opções do seletor (a da linha e a do lote). O seletor tem 104 px: o
+ * rótulo do padrão é só "Default" (o "Padrão (sem limite)" de antes saía
+ * cortado em "Padrão (sem li…"), e o valor do padrão vai no tooltip do
+ * seletor e no da opção. Todo rótulo visível com o seletor fechado cabe em 12
+ * caracteres nos três idiomas (travado no SessionPanel.test.tsx).
+ */
 function LimitOptions({ defaultMb, own }: { defaultMb: number; own: number | null }) {
   const t = useTr();
   const custom = own !== null && own > 0 && !MEMORY_LIMIT_PRESETS_MB.includes(own) ? own : null;
+  const defaultText = defaultMb > 0 ? formatMemoryMb(defaultMb) : t("no limit");
   return (
     <>
-      <option value="default">
-        {defaultMb > 0
-          ? t("Default ({{limit}})", { limit: formatMemoryMb(defaultMb) })
-          : t("Default (no limit)")}
+      <option value="default" title={t("Default: {{limit}}", { limit: defaultText })}>
+        {t("Default limit")}
       </option>
       <option value="0">{t("No limit")}</option>
       {MEMORY_LIMIT_PRESETS_MB.map((mb) => (
@@ -98,7 +103,7 @@ export function MemoryLimitSelect({
     >
       {choice === null && (
         <option value="" disabled>
-          {t("Choose a limit")}
+          {t("Choose…")}
         </option>
       )}
       <LimitOptions defaultMb={defaultMb} own={own} />

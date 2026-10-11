@@ -2433,8 +2433,6 @@
   "Closed {{name}}: memory stayed over its limit after it was freed": "{{name}} cerrado: la memoria siguió por encima del límite después de liberarla",
   "Closes a client whose memory drops below the threshold, the usual sign of one that froze. With a memory limit set, it also closes a client that stays over it after MultiAlt freed its memory.": "Cierra el cliente cuya memoria baja del umbral, la señal habitual de uno que se congeló. Con un límite de memoria definido, también cierra el cliente que sigue por encima después de que MultiAlt liberara su memoria.",
   "Custom…": "Personalizado…",
-  "Default ({{limit}})": "Predeterminado ({{limit}})",
-  "Default (no limit)": "Predeterminado (sin límite)",
   "Following the default ({{limit}}). Above the limit, MultiAlt first asks Windows to free the client's memory.": "Siguiendo el predeterminado ({{limit}}). Por encima del límite, MultiAlt primero pide a Windows que libere la memoria del cliente.",
   "Memory in use now.": "Memoria en uso ahora.",
   "Memory in use now. Limit: {{limit}}.": "Memoria en uso ahora. Límite: {{limit}}.",
@@ -2451,5 +2449,7 @@
   "Over its limit of {{limit}}: MultiAlt asked Windows to free this client's memory.": "Por encima de su límite de {{limit}}: MultiAlt pidió a Windows que liberara la memoria de este cliente.",
   "Over its limit of {{limit}}.": "Por encima de su límite de {{limit}}.",
   "Set for this account. Above the limit, MultiAlt first asks Windows to free the client's memory.": "Elegido para esta cuenta. Por encima del límite, MultiAlt primero pide a Windows que libere la memoria del cliente.",
-  "Choose a limit": "Elige un límite"
+  "Choose…": "Elegir…",
+  "Default limit": "Por defecto",
+  "Default: {{limit}}": "Por defecto: {{limit}}"
 }

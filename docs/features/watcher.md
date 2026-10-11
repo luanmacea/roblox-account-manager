@@ -294,8 +294,12 @@ paginação e voltam quando o cliente precisar; nada é perdido).
 - **Onde se muda:**
   - **por cliente, na página Session** — cada linha da lista **In game** mostra a
     memória do cliente agora (do mesmo polling de 2,5 s do `get_running_instances`,
-    sem leitura nova) e um seletor compacto: "Default (…)", "No limit", 1 / 1,5 /
-    2 / 3 / 4 GB, o valor próprio da conta e "Custom…" (pergunta em MB ou GB). A
+    sem leitura nova) e um seletor compacto (104 px): "Default", "No limit", 1 / 1,5 /
+    2 / 3 / 4 GB, o valor próprio da conta e "Custom…" (pergunta em MB ou GB). O
+    valor do padrão fica no tooltip do seletor ("Following the default (2 GB)…"),
+    não no rótulo: "Padrão (sem limite)" saía cortado em "Padrão (sem li…" (11/10/2026).
+    Todo rótulo visível com o seletor fechado — inclusive o "Choose…" do lote —
+    cabe em 12 caracteres em en/pt/es (`SessionPanel.test.tsx`). A
     memória fica âmbar acima do limite, com o tooltip dizendo que o app pediu para
     liberar. Com linhas marcadas, a faixa **Memory limit** aplica o mesmo valor a
     todas as marcadas (ou volta ao padrão), uma conta por vez. Cliente aberto pelo

@@ -16,6 +16,7 @@ import {
   renderWithStore,
   setStore,
 } from "../../test-utils/renderWithStore";
+import i18n from "../../i18n";
 import { confirmMock, promptAnswers, resetPromptMocks } from "../../test-utils/promptMocks";
 import { emitTauriEvent, invokeMock, resetTauriMocks, setInvokeMap } from "../../test-utils/tauriMocks";
 import { clearGameIdentityCache } from "../../hooks/useGameIdentity";
@@ -1123,13 +1124,44 @@ describe("SessionPanel — limite de memória por cliente", () => {
     expect(within(row).getByText("1.2 GB")).toBeInTheDocument();
     const select = limitSelect("alpha");
     expect(select.value).toBe("default");
-    expect(within(select).getByRole("option", { name: "Default (2 GB)" })).toBeInTheDocument();
-    expect(select).toHaveAttribute("title", expect.stringMatching(/Following the default/));
+    // O rótulo é curto (cabe no seletor); o valor do padrão vai no tooltip.
+    expect(within(select).getByRole("option", { name: "Default" })).toBeInTheDocument();
+    expect(select).toHaveAttribute("title", expect.stringMatching(/Following the default \(2 GB\)/));
   });
 
   it("says when there is no default limit", () => {
     renderRunning();
-    expect(within(limitSelect("alpha")).getByRole("option", { name: "Default (no limit)" })).toBeInTheDocument();
+    expect(within(limitSelect("alpha")).getByRole("option", { name: "Default" })).toBeInTheDocument();
+    expect(limitSelect("alpha")).toHaveAttribute("title", expect.stringMatching(/Following the default \(no limit\)/));
+  });
+
+  /**
+   * O seletor da linha tem 104 px: "Padrão (sem li…" cortado (pedido do dono,
+   * 11/10/2026). Todo rótulo que aparece com o seletor fechado — padrão, sem
+   * limite, os tamanhos, o próprio da conta e o "Choose…" do lote — cabe em 12
+   * caracteres nos três idiomas (~70 px a 11 px). "Custom…" só aparece com a
+   * lista aberta, que se alarga sozinha.
+   */
+  it.each(["en", "pt", "es"])("every label shown in the closed picker fits (%s)", async (lang) => {
+    await i18n.changeLanguage(lang);
+    try {
+      const accounts = [
+        makeAccount({ UserID: 1, Username: "alpha", Fields: { MemoryLimit: "1800" } }),
+        makeAccount({ UserID: 2, Username: "bravo" }),
+      ];
+      renderRunning({ settings: { Optimization: { MemoryLimit: "2048" } } }, accounts);
+      // Pelas linhas, não pelos nomes acessíveis: eles também mudam de idioma.
+      const row = (id: number) => screen.getByTestId(`session-running-${id}`);
+      const rowSelect = within(row(1)).getByRole("combobox") as HTMLSelectElement;
+      const labels = [...rowSelect.options].filter((o) => o.value !== "custom").map((o) => o.textContent ?? "");
+      for (const id of [1, 2]) await userEvent.click(within(row(id)).getByRole("checkbox"));
+      const bulk = screen.getByTestId("session-memory-bulk").querySelector("select") as HTMLSelectElement;
+      labels.push(bulk.options[0].textContent ?? "");
+      expect(labels.length).toBeGreaterThan(5);
+      for (const label of labels) expect(label.length, label).toBeLessThanOrEqual(12);
+    } finally {
+      await i18n.changeLanguage("en");
+    }
   });
 
   it("picking a size writes the account field and keeps the other fields, closing nothing", async () => {
